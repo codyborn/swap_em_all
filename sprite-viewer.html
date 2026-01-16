@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon Sprite Frame Viewer</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        .info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .controls {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .controls label {
+            margin-right: 10px;
+        }
+        .controls input, .controls select {
+            margin-right: 20px;
+            padding: 5px;
+        }
+        canvas {
+            border: 2px solid #4CAF50;
+            background: #fff;
+            cursor: crosshair;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .canvas-container {
+            overflow: auto;
+            max-height: 800px;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .selected-info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .selected-info h3 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .preview {
+            display: inline-block;
+            width: 64px;
+            height: 64px;
+            background: #fff;
+            border: 2px solid #4CAF50;
+            image-rendering: pixelated;
+            margin-right: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .copy-btn {
+            background: #2196F3;
+        }
+        .copy-btn:hover {
+            background: #0b7dda;
+        }
+        code {
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Pokemon Sprite Frame Viewer</h1>
+
+        <div class="info">
+            <p><strong>Instructions:</strong></p>
+            <ol>
+                <li>Select a sprite sheet to view</li>
+                <li>Adjust the zoom level for better visibility</li>
+                <li>Toggle grid and frame numbers on/off</li>
+                <li>Click any sprite to see its frame number</li>
+                <li>Record the frame numbers in SPRITE_LABELING_GUIDE.md</li>
+            </ol>
+        </div>
+
+        <div class="controls">
+            <label><strong>Sprite Sheet:</strong></label>
+            <select id="spriteSelect">
+                <option value="player">Player Sprites (player-sprites.png)</option>
+                <option value="npcs">NPC Sprites (overworld-npcs.png)</option>
+            </select>
+
+            <label><strong>Zoom:</strong></label>
+            <select id="zoomSelect">
+                <option value="1">1x (16px)</option>
+                <option value="2" selected>2x (32px)</option>
+                <option value="3">3x (48px)</option>
+                <option value="4">4x (64px)</option>
+            </select>
+
+            <label>
+                <input type="checkbox" id="showGrid" checked>
+                Show Grid
+            </label>
+
+            <label>
+                <input type="checkbox" id="showFrames" checked>
+                Show Frame Numbers
+            </label>
+
+            <button onclick="resetView()">Reset View</button>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="spriteCanvas"></canvas>
+        </div>
+
+        <div class="selected-info" id="selectedInfo" style="display: none;">
+            <h3>Selected Sprite</h3>
+            <canvas id="previewCanvas" class="preview"></canvas>
+            <div style="display: inline-block; vertical-align: top;">
+                <p><strong>Frame Number:</strong> <code id="frameNumber">-</code></p>
+                <p><strong>Grid Position:</strong> <code id="gridPosition">-</code></p>
+                <p><strong>Pixel Position:</strong> <code id="pixelPosition">-</code></p>
+                <button class="copy-btn" onclick="copyFrameNumber()">Copy Frame Number</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const FRAME_SIZE = 16;
+        let currentImage = null;
+        let currentSprite = 'player';
+        let zoom = 2;
+        let showGrid = true;
+        let showFrames = true;
+        let selectedFrame = null;
+
+        const canvas = document.getElementById('spriteCanvas');
+        const ctx = canvas.getContext('2d');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
+
+        const sprites = {
+            player: '/assets/sprites/player/player-sprites.png',
+            npcs: '/assets/sprites/npcs/overworld-npcs.png'
+        };
+
+        function loadSprite(spriteName) {
+            currentSprite = spriteName;
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                drawSprites();
+            };
+            img.src = sprites[spriteName];
+        }
+
+        function drawSprites() {
+            if (!currentImage) return;
+
+            const framesX = Math.floor(currentImage.width / FRAME_SIZE);
+            const framesY = Math.floor(currentImage.height / FRAME_SIZE);
+
+            canvas.width = framesX * FRAME_SIZE * zoom;
+            canvas.height = framesY * FRAME_SIZE * zoom;
+
+            // Draw scaled image
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            if (showGrid) {
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.lineWidth = 1;
+
+                for (let x = 0; x <= framesX; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x * FRAME_SIZE * zoom, 0);
+                    ctx.lineTo(x * FRAME_SIZE * zoom, canvas.height);
+                    ctx.stroke();
+                }
+
+                for (let y = 0; y <= framesY; y++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y * FRAME_SIZE * zoom);
+                    ctx.lineTo(canvas.width, y * FRAME_SIZE * zoom);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw frame numbers
+            if (showFrames) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.font = `${Math.max(8, FRAME_SIZE * zoom / 2)}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                for (let y = 0; y < framesY; y++) {
+                    for (let x = 0; x < framesX; x++) {
+                        const frameNum = y * framesX + x;
+                        const centerX = x * FRAME_SIZE * zoom + (FRAME_SIZE * zoom) / 2;
+                        const centerY = y * FRAME_SIZE * zoom + (FRAME_SIZE * zoom) / 2;
+
+                        // Background
+                        const textWidth = ctx.measureText(frameNum).width;
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                        ctx.fillRect(centerX - textWidth/2 - 2, centerY - 8, textWidth + 4, 16);
+
+                        // Text
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                        ctx.fillText(frameNum, centerX, centerY);
+                    }
+                }
+            }
+
+            // Highlight selected frame
+            if (selectedFrame !== null) {
+                const framesX = Math.floor(currentImage.width / FRAME_SIZE);
+                const x = selectedFrame % framesX;
+                const y = Math.floor(selectedFrame / framesX);
+
+                ctx.strokeStyle = 'rgba(76, 175, 80, 1)';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(
+                    x * FRAME_SIZE * zoom,
+                    y * FRAME_SIZE * zoom,
+                    FRAME_SIZE * zoom,
+                    FRAME_SIZE * zoom
+                );
+            }
+        }
+
+        canvas.addEventListener('click', function(e) {
+            if (!currentImage) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / zoom / FRAME_SIZE);
+            const y = Math.floor((e.clientY - rect.top) / zoom / FRAME_SIZE);
+            const framesX = Math.floor(currentImage.width / FRAME_SIZE);
+            const frameNum = y * framesX + x;
+
+            selectedFrame = frameNum;
+
+            // Update info
+            document.getElementById('selectedInfo').style.display = 'block';
+            document.getElementById('frameNumber').textContent = frameNum;
+            document.getElementById('gridPosition').textContent = `Column ${x}, Row ${y}`;
+            document.getElementById('pixelPosition').textContent = `(${x * FRAME_SIZE}, ${y * FRAME_SIZE})`;
+
+            // Draw preview
+            previewCanvas.width = 64;
+            previewCanvas.height = 64;
+            previewCtx.imageSmoothingEnabled = false;
+            previewCtx.drawImage(
+                currentImage,
+                x * FRAME_SIZE, y * FRAME_SIZE, FRAME_SIZE, FRAME_SIZE,
+                0, 0, 64, 64
+            );
+
+            drawSprites();
+        });
+
+        function copyFrameNumber() {
+            const frameNum = document.getElementById('frameNumber').textContent;
+            navigator.clipboard.writeText(frameNum);
+            alert(`Frame number ${frameNum} copied to clipboard!`);
+        }
+
+        function resetView() {
+            selectedFrame = null;
+            document.getElementById('selectedInfo').style.display = 'none';
+            drawSprites();
+        }
+
+        // Event listeners
+        document.getElementById('spriteSelect').addEventListener('change', function(e) {
+            loadSprite(e.target.value);
+        });
+
+        document.getElementById('zoomSelect').addEventListener('change', function(e) {
+            zoom = parseInt(e.target.value);
+            drawSprites();
+        });
+
+        document.getElementById('showGrid').addEventListener('change', function(e) {
+            showGrid = e.target.checked;
+            drawSprites();
+        });
+
+        document.getElementById('showFrames').addEventListener('change', function(e) {
+            showFrames = e.target.checked;
+            drawSprites();
+        });
+
+        // Initial load
+        loadSprite('player');
+    </script>
+</body>
+</html>
