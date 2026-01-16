@@ -30,19 +30,21 @@ export class NPC {
     this.onInteract = config.onInteract;
     this.gymId = config.gymId;
 
-    // Create sprite
-    const spriteKeys: Record<NPCType, string> = {
-      professor: 'npc-professor',
-      clerk: 'npc-clerk',
-      trader: 'npc-trader',
-      nurse: 'npc-nurse',
-      gym_leader: 'npc-gym',
+    // Create sprite from Pokemon FireRed/LeafGreen NPC spritesheet
+    // Map NPC types to frame numbers in the spritesheet
+    const npcFrames: Record<NPCType, number> = {
+      professor: 3,     // Professor Oak style character
+      clerk: 25,        // Store clerk style
+      trader: 45,       // Trader style character
+      nurse: 20,        // Nurse Joy style
+      gym_leader: 60,   // Gym leader style
     };
 
     this.sprite = this.scene.add.sprite(
       config.x,
       config.y,
-      spriteKeys[this.type]
+      'npcs',
+      npcFrames[this.type]
     );
 
     // Add physics if needed

@@ -215,15 +215,45 @@ npx tsc --noEmit
 npm run dev
 ```
 
-## 📝 License
+## ⚠️ Copyright & Legal Notice
 
-MIT License - feel free to use this code for your own projects!
+**IMPORTANT: Educational/Fan Project**
+
+This project uses sprite assets from **Pokemon FireRed/LeafGreen**, which are copyrighted by Nintendo, Game Freak, and The Pokémon Company. These sprites are used for **educational and non-commercial purposes only**.
+
+### Asset Attribution
+- **Player & NPC Sprites**: Pokemon FireRed/LeafGreen (Game Boy Advance)
+- **Source**: [The Spriters Resource](https://www.spriters-resource.com/game_boy_advance/pokemonfireredleafgreen/)
+- **Copyright**: © Nintendo / Game Freak / The Pokémon Company
+
+### Legal Disclaimer
+- ❌ **Not for commercial use** - This is a fan/educational project
+- ❌ **Not affiliated** with Nintendo, Game Freak, or The Pokémon Company
+- ✅ **Educational purposes only** - Learning Web3 game development
+- ✅ **No profit** - Free and open source project
+
+**If you are Nintendo/Game Freak representative and have concerns, please contact me to discuss removal.**
+
+### For Developers
+If you fork this project:
+- **Keep it non-commercial**
+- **Add proper attribution**
+- **Consider using original sprites** for any commercial plans
+- **Respect Nintendo's intellectual property**
+
+## 📝 Code License
+
+The **code** in this project is released under the MIT License - feel free to use the code for your own projects!
+
+**Note**: The MIT License applies ONLY to the code. Pokemon sprites remain property of their respective owners.
 
 ## 🙏 Credits
 
 - **Game Engine**: [Phaser 3](https://phaser.io/)
 - **Web3**: [Uniswap SDK](https://docs.uniswap.org/)
 - **Blockchain**: [Base](https://base.org/)
+- **Sprites**: Pokemon FireRed/LeafGreen (© Nintendo / Game Freak)
+- **Sprite Source**: [The Spriters Resource](https://www.spriters-resource.com/)
 - **Inspiration**: Pokemon (Game Freak/Nintendo)
 
 ## 🤝 Contributing

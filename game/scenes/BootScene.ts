@@ -13,17 +13,62 @@ export class BootScene extends Phaser.Scene {
     // Set up loading bar
     this.createLoadingScreen();
 
-    // TODO: Load assets here
-    // this.load.image('player', '/assets/sprites/player/player.png');
-    // this.load.spritesheet('player', '/assets/sprites/player/player.png', {
-    //   frameWidth: 16,
-    //   frameHeight: 16,
-    // });
+    // Load Pokemon FireRed/LeafGreen sprite sheets
+    // Player sprites (Red - male protagonist)
+    this.load.spritesheet('player', '/assets/sprites/player/player-sprites.png', {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
+
+    // NPC sprites
+    this.load.spritesheet('npcs', '/assets/sprites/npcs/overworld-npcs.png', {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
+
+    // Tileset
+    this.load.image('tileset', '/assets/sprites/tiles/tileset.png');
   }
 
   create() {
-    // Generate all game sprites
-    SpriteGenerator.generateAllSprites(this);
+    // Generate token sprites (keeping custom sprites for crypto tokens)
+    SpriteGenerator.generateTokenSprites(this);
+
+    // Create player animations from Pokemon FireRed/LeafGreen sprites
+    // Red protagonist walking animations (frames from sprite sheet)
+    this.anims.create({
+      key: 'player-down',
+      frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+
+    this.anims.create({
+      key: 'player-up',
+      frames: this.anims.generateFrameNumbers('player', { start: 4, end: 7 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+
+    this.anims.create({
+      key: 'player-left',
+      frames: this.anims.generateFrameNumbers('player', { start: 8, end: 11 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+
+    this.anims.create({
+      key: 'player-right',
+      frames: this.anims.generateFrameNumbers('player', { start: 12, end: 15 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+
+    this.anims.create({
+      key: 'player-idle',
+      frames: [{ key: 'player', frame: 0 }],
+      frameRate: 1,
+    });
 
     // GameBoy-style boot animation
     this.logo = this.add.text(
