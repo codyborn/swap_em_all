@@ -133,6 +133,7 @@
             <p><strong>Instructions:</strong></p>
             <ol>
                 <li><strong>Load a sprite sheet</strong> using the file input below (or quick-load buttons)</li>
+                <li><strong>Adjust frame size</strong> if the grid doesn't line up (try 16x16, 24x24, 32x32, etc.)</li>
                 <li>Adjust the zoom level for better visibility</li>
                 <li>Toggle grid and frame numbers on/off</li>
                 <li>Click any sprite to see its frame number</li>
@@ -152,12 +153,26 @@
         </div>
 
         <div class="controls">
+            <label><strong>Frame Size:</strong></label>
+            <select id="frameSizeSelect">
+                <option value="8">8x8 pixels</option>
+                <option value="16" selected>16x16 pixels</option>
+                <option value="24">24x24 pixels</option>
+                <option value="32">32x32 pixels</option>
+                <option value="48">48x48 pixels</option>
+                <option value="64">64x64 pixels</option>
+            </select>
+
+            <label><strong>Custom:</strong></label>
+            <input type="number" id="customFrameSize" placeholder="Custom size" style="width: 80px;" min="1" max="256">
+            <button onclick="applyCustomFrameSize()">Apply</button>
+
             <label><strong>Zoom:</strong></label>
             <select id="zoomSelect">
-                <option value="1">1x (16px)</option>
-                <option value="2" selected>2x (32px)</option>
-                <option value="3">3x (48px)</option>
-                <option value="4">4x (64px)</option>
+                <option value="1">1x</option>
+                <option value="2" selected>2x</option>
+                <option value="3">3x</option>
+                <option value="4">4x</option>
             </select>
 
             <label>
@@ -174,6 +189,14 @@
         </div>
 
         <div class="canvas-container">
+            <div id="sheetInfo" style="background: #1a1a1a; padding: 10px; margin-bottom: 10px; border-radius: 3px; display: none;">
+                <strong>Sheet Info:</strong>
+                <span id="sheetDimensions"></span> |
+                <strong>Grid:</strong>
+                <span id="gridInfo"></span> |
+                <strong>Total Frames:</strong>
+                <span id="totalFrames"></span>
+            </div>
             <canvas id="spriteCanvas"></canvas>
         </div>
 
@@ -190,7 +213,7 @@
     </div>
 
     <script>
-        const FRAME_SIZE = 16;
+        let FRAME_SIZE = 16;
         let currentImage = null;
         let zoom = 2;
         let showGrid = true;
@@ -240,6 +263,13 @@
 
             const framesX = Math.floor(currentImage.width / FRAME_SIZE);
             const framesY = Math.floor(currentImage.height / FRAME_SIZE);
+            const totalFrames = framesX * framesY;
+
+            // Update info display
+            document.getElementById('sheetInfo').style.display = 'block';
+            document.getElementById('sheetDimensions').textContent = `${currentImage.width}x${currentImage.height}px`;
+            document.getElementById('gridInfo').textContent = `${framesX} cols × ${framesY} rows (${FRAME_SIZE}x${FRAME_SIZE}px frames)`;
+            document.getElementById('totalFrames').textContent = totalFrames;
 
             canvas.width = framesX * FRAME_SIZE * zoom;
             canvas.height = framesY * FRAME_SIZE * zoom;
@@ -352,7 +382,27 @@
             drawSprites();
         }
 
+        function applyCustomFrameSize() {
+            const customSize = parseInt(document.getElementById('customFrameSize').value);
+            if (customSize && customSize > 0 && customSize <= 256) {
+                FRAME_SIZE = customSize;
+                document.getElementById('frameSizeSelect').value = '';
+                selectedFrame = null;
+                drawSprites();
+            } else {
+                alert('Please enter a valid frame size (1-256)');
+            }
+        }
+
         // Event listeners
+        document.getElementById('frameSizeSelect').addEventListener('change', function(e) {
+            if (e.target.value) {
+                FRAME_SIZE = parseInt(e.target.value);
+                selectedFrame = null;
+                drawSprites();
+            }
+        });
+
         document.getElementById('zoomSelect').addEventListener('change', function(e) {
             zoom = parseInt(e.target.value);
             drawSprites();
