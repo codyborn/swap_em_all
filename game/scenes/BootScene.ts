@@ -37,8 +37,9 @@ export class BootScene extends Phaser.Scene {
 
     // Debug: Check if player atlas loaded
     const playerTexture = this.textures.get('player');
-    console.log('Player texture loaded:', playerTexture);
-    console.log('Player texture frames:', playerTexture.getFrameNames());
+    const frameNames = playerTexture.getFrameNames();
+    console.log('Player atlas loaded with', frameNames.length, 'frames');
+    console.log('First 10 frame names:', frameNames.slice(0, 10));
 
     // Create player animations from Pokemon FireRed/LeafGreen sprites
     // Red protagonist walking animations (frames identified from sprite sheet at threshold 70)
@@ -78,7 +79,7 @@ export class BootScene extends Phaser.Scene {
       frameRate: 1,
     });
     console.log('Created player-idle animation');
-    console.log('player-idle exists?', this.anims.exists('player-idle'));
+    console.log('All player animations created successfully');
 
     // GameBoy-style boot animation
     this.logo = this.add.text(

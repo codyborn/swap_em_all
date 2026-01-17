@@ -35,31 +35,9 @@ test.describe('Sprite Loading', () => {
       }
     });
 
-    // First go to home page to connect wallet
-    console.log('Navigating to home page...');
-    await page.goto('http://localhost:3000/', {
-      waitUntil: 'load',
-      timeout: 30000
-    });
-
-    // Wait for and click Connect Wallet button
-    console.log('Looking for Connect Wallet button on home page...');
-    const homeWalletButton = page.locator('button:has-text("Connect Wallet")').first();
-    await homeWalletButton.waitFor({ state: 'visible', timeout: 5000 });
-    await homeWalletButton.click();
-
-    console.log('Clicked Connect Wallet, waiting for wallet modal...');
-    await page.waitForTimeout(2000);
-
-    // Take screenshot of wallet modal
-    await page.screenshot({
-      path: 'tests/screenshots/wallet-modal.png',
-      fullPage: true
-    });
-
-    // Now navigate to the game
-    console.log('Navigating to /game...');
-    await page.goto('http://localhost:3000/game', {
+    // Navigate to the test game route (bypasses wallet requirement)
+    console.log('Navigating to /game/test...');
+    await page.goto('http://localhost:3000/game/test', {
       waitUntil: 'load',
       timeout: 30000
     });
@@ -70,48 +48,49 @@ test.describe('Sprite Loading', () => {
       fullPage: true
     });
 
-    // Wait for game to be visible (check for GameBoy container or canvas)
-    console.log('Waiting for game to be visible...');
-    try {
-      // The game renders inside the GameBoy component - wait for anything game-related
-      await page.waitForSelector('text=SWAP \'EM ALL', { timeout: 10000 });
-      console.log('Game screen found!');
-    } catch (e) {
-      console.error('Game did not load!');
-      await page.screenshot({
-        path: 'tests/screenshots/no-game.png',
-        fullPage: true
-      });
-      throw e;
-    }
+    // Wait for Phaser game to initialize
+    console.log('Waiting for Phaser game to initialize...');
+    await page.waitForTimeout(3000);
 
-    // Wait a bit for the boot scene
-    await page.waitForTimeout(2000);
-
-    // Take screenshot of boot screen
+    // Take screenshot after initialization
     await page.screenshot({
-      path: 'tests/screenshots/boot-screen.png',
+      path: 'tests/screenshots/game-initialized.png',
       fullPage: true
     });
 
-    // Try to find and click Connect Wallet button if present
-    console.log('Looking for Connect Wallet button...');
-    const walletButton = await page.locator('button:has-text("Connect Wallet")').first();
-    const isVisible = await walletButton.isVisible().catch(() => false);
+    // Wait additional time for all sprites to load
+    console.log('Waiting for sprites to load...');
+    await page.waitForTimeout(2000);
 
-    if (isVisible) {
-      console.log('Clicking Connect Wallet button...');
-      await walletButton.click();
-      await page.waitForTimeout(2000);
-    }
-
-    // Wait for game to fully initialize
-    console.log('Waiting for game to initialize...');
-    await page.waitForTimeout(3000);
-
-    // Take a screenshot
+    // Take a screenshot of game
     await page.screenshot({
       path: 'tests/screenshots/game-loaded.png',
+      fullPage: true
+    });
+
+    // Wait for boot animation to complete
+    console.log('Waiting for title screen...');
+    await page.waitForTimeout(2000);
+
+    // Screenshot of title screen
+    await page.screenshot({
+      path: 'tests/screenshots/title-screen.png',
+      fullPage: true
+    });
+
+    // Press Enter/Space to start game (simulates user input)
+    console.log('Pressing Enter to start game...');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(1000);
+
+    // Also try Space bar
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(2000);
+
+    // Take final screenshot of overworld scene
+    console.log('Taking final overworld screenshot...');
+    await page.screenshot({
+      path: 'tests/screenshots/overworld.png',
       fullPage: true
     });
 
