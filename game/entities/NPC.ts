@@ -31,13 +31,13 @@ export class NPC {
     this.gymId = config.gymId;
 
     // Create sprite from Pokemon FireRed/LeafGreen NPC spritesheet
-    // Map NPC types to frame numbers in the spritesheet
+    // Map NPC types to frame numbers (identified from sprite sheet at threshold 70)
     const npcFrames: Record<NPCType, number> = {
-      professor: 3,     // Professor Oak style character
-      clerk: 25,        // Store clerk style
-      trader: 45,       // Trader style character
-      nurse: 20,        // Nurse Joy style
-      gym_leader: 60,   // Gym leader style
+      professor: 40,     // Professor Oak style character (lab coat, scholarly)
+      clerk: 567,        // Store clerk style (PokeMart uniform)
+      trader: 381,       // Trader style character (businessman/merchant)
+      nurse: 163,        // Nurse Joy style (pink/white uniform)
+      gym_leader: 398,   // Gym leader style (trainer/athletic)
     };
 
     this.sprite = this.scene.add.sprite(

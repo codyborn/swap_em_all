@@ -35,38 +35,38 @@ export class BootScene extends Phaser.Scene {
     SpriteGenerator.generateTokenSprites(this);
 
     // Create player animations from Pokemon FireRed/LeafGreen sprites
-    // Red protagonist walking animations (frames from sprite sheet)
+    // Red protagonist walking animations (frames identified from sprite sheet at threshold 70)
     this.anims.create({
       key: 'player-down',
-      frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+      frames: this.anims.generateFrameNumbers('player', { start: 0, end: 2 }),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-up',
-      frames: this.anims.generateFrameNumbers('player', { start: 4, end: 7 }),
+      frames: this.anims.generateFrameNumbers('player', { start: 32, end: 34 }),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-left',
-      frames: this.anims.generateFrameNumbers('player', { start: 8, end: 11 }),
+      frames: this.anims.generateFrameNumbers('player', { start: 50, end: 52 }),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-right',
-      frames: this.anims.generateFrameNumbers('player', { start: 12, end: 15 }),
+      frames: this.anims.generateFrameNumbers('player', { start: 69, end: 71 }),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-idle',
-      frames: [{ key: 'player', frame: 0 }],
+      frames: [{ key: 'player', frame: 1 }],
       frameRate: 1,
     });
 
