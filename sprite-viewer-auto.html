@@ -157,8 +157,9 @@
 
         <div class="controls">
             <label><strong>Border Threshold (0-255):</strong></label>
-            <input type="range" id="thresholdSlider" min="200" max="255" value="250" style="width: 200px;">
-            <span id="thresholdValue">250</span>
+            <input type="range" id="thresholdSlider" min="1" max="255" value="240" style="width: 200px;">
+            <span id="thresholdValue">240</span>
+            <span style="color: #888; margin-left: 10px;">(Lower = more sensitive)</span>
 
             <label><strong>Zoom:</strong></label>
             <select id="zoomSelect">
@@ -207,7 +208,7 @@
         let showFrames = true;
         let selectedFrame = null;
         let sprites = [];
-        let threshold = 250;
+        let threshold = 240;
 
         const canvas = document.getElementById('spriteCanvas');
         const ctx = canvas.getContext('2d');
