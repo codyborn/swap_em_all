@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokemon Sprite Frame Viewer (Auto-detect)</title>
+    <title>Pokemon Sprite Frame Viewer (Flood-Fill)</title>
     <style>
         body {
             font-family: monospace;
@@ -132,16 +132,17 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎮 Pokemon Sprite Frame Viewer (Auto-detect Borders)</h1>
+        <h1>🎮 Pokemon Sprite Frame Viewer (Flood-Fill Detection)</h1>
 
         <div class="info">
             <p><strong>Instructions:</strong></p>
             <ol>
-                <li><strong>Load a sprite sheet</strong> - Will automatically detect white border lines</li>
-                <li>Adjust sensitivity if detection isn't perfect</li>
+                <li><strong>Load a sprite sheet</strong> - Will automatically detect sprites using flood-fill</li>
+                <li>Adjust border threshold if sprites are merged or split incorrectly</li>
                 <li>Click any sprite to see its frame number</li>
                 <li>Copy frame numbers and record in SPRITE_LABELING_GUIDE.md</li>
             </ol>
+            <p><strong>How it works:</strong> Starts at each non-white pixel and expands outward until hitting white borders, grouping connected pixels into individual sprites.</p>
         </div>
 
         <div class="quick-load">
@@ -156,10 +157,10 @@
         </div>
 
         <div class="controls">
-            <label><strong>Border Threshold (0-255):</strong></label>
+            <label><strong>Border Threshold (1-255):</strong></label>
             <input type="range" id="thresholdSlider" min="1" max="255" value="240" style="width: 200px;">
             <span id="thresholdValue">240</span>
-            <span style="color: #888; margin-left: 10px;">(Lower = more sensitive)</span>
+            <span style="color: #888; margin-left: 10px;">(Pixels ≥ threshold are borders. Lower = more sensitive)</span>
 
             <label><strong>Zoom:</strong></label>
             <select id="zoomSelect">
@@ -256,33 +257,55 @@
             img.src = path;
         }
 
-        function isWhiteLine(imageData, x, y, width, height, isVertical) {
-            // Check if a line is mostly white
-            const samples = isVertical ? height : width;
-            let whiteCount = 0;
+        function isWhitePixel(imageData, x, y, width) {
+            const idx = (y * width + x) * 4;
+            const r = imageData.data[idx];
+            const g = imageData.data[idx + 1];
+            const b = imageData.data[idx + 2];
 
-            for (let i = 0; i < samples; i++) {
-                const px = isVertical ? x : x + i;
-                const py = isVertical ? y + i : y;
-                const idx = (py * width + px) * 4;
+            // Check if pixel is white based on threshold
+            return r >= threshold && g >= threshold && b >= threshold;
+        }
 
-                const r = imageData.data[idx];
-                const g = imageData.data[idx + 1];
-                const b = imageData.data[idx + 2];
+        function floodFill(imageData, startX, startY, width, height, visited) {
+            // Flood fill to find all connected non-white pixels
+            const pixels = [];
+            const queue = [{x: startX, y: startY}];
 
-                // Check if pixel is white-ish
-                if (r >= threshold && g >= threshold && b >= threshold) {
-                    whiteCount++;
+            while (queue.length > 0) {
+                const {x, y} = queue.shift();
+
+                // Check bounds
+                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+                // Check if already visited
+                const key = y * width + x;
+                if (visited.has(key)) continue;
+
+                // Check if white (border)
+                if (isWhitePixel(imageData, x, y, width)) {
+                    visited.add(key);
+                    continue;
                 }
+
+                // Mark as visited and add to region
+                visited.add(key);
+                pixels.push({x, y});
+
+                // Add neighbors to queue (4-way connectivity)
+                queue.push({x: x + 1, y: y});
+                queue.push({x: x - 1, y: y});
+                queue.push({x: x, y: y + 1});
+                queue.push({x: x, y: y - 1});
             }
 
-            return whiteCount / samples > 0.8; // 80% must be white
+            return pixels;
         }
 
         function detectSprites() {
             if (!currentImage) return;
 
-            updateStatus('Analyzing image...');
+            updateStatus('Analyzing image with flood-fill algorithm...');
 
             // Create a temporary canvas to read pixel data
             const tempCanvas = document.createElement('canvas');
@@ -292,60 +315,75 @@
             tempCtx.drawImage(currentImage, 0, 0);
             const imageData = tempCtx.getImageData(0, 0, currentImage.width, currentImage.height);
 
-            // Detect vertical white lines (column separators)
-            const verticalLines = [0];
-            for (let x = 1; x < currentImage.width - 1; x++) {
-                if (isWhiteLine(imageData, x, 0, currentImage.width, currentImage.height, true)) {
-                    // Check if this line is not too close to the last one (avoid double-detection)
-                    if (x - verticalLines[verticalLines.length - 1] > 2) {
-                        verticalLines.push(x);
+            // Track visited pixels
+            const visited = new Set();
+            const regions = [];
+
+            // Scan image for sprite regions
+            for (let y = 0; y < currentImage.height; y++) {
+                for (let x = 0; x < currentImage.width; x++) {
+                    const key = y * currentImage.width + x;
+
+                    // Skip if already visited
+                    if (visited.has(key)) continue;
+
+                    // Skip if white (border)
+                    if (isWhitePixel(imageData, x, y, currentImage.width)) {
+                        visited.add(key);
+                        continue;
                     }
-                }
-            }
-            verticalLines.push(currentImage.width);
 
-            // Detect horizontal white lines (row separators)
-            const horizontalLines = [0];
-            for (let y = 1; y < currentImage.height - 1; y++) {
-                if (isWhiteLine(imageData, 0, y, currentImage.width, currentImage.height, false)) {
-                    // Check if this line is not too close to the last one
-                    if (y - horizontalLines[horizontalLines.length - 1] > 2) {
-                        horizontalLines.push(y);
-                    }
-                }
-            }
-            horizontalLines.push(currentImage.height);
+                    // Found an ungrouped non-white pixel - flood fill to find the sprite
+                    const pixels = floodFill(imageData, x, y, currentImage.width, currentImage.height, visited);
 
-            console.log('Detected vertical lines:', verticalLines.length);
-            console.log('Detected horizontal lines:', horizontalLines.length);
+                    // Calculate bounding box for this region
+                    if (pixels.length > 0) {
+                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-            // Create sprite regions from the detected lines
-            sprites = [];
-            let frameNum = 0;
+                        for (const pixel of pixels) {
+                            minX = Math.min(minX, pixel.x);
+                            minY = Math.min(minY, pixel.y);
+                            maxX = Math.max(maxX, pixel.x);
+                            maxY = Math.max(maxY, pixel.y);
+                        }
 
-            for (let row = 0; row < horizontalLines.length - 1; row++) {
-                for (let col = 0; col < verticalLines.length - 1; col++) {
-                    const x = verticalLines[col];
-                    const y = horizontalLines[row];
-                    const width = verticalLines[col + 1] - x;
-                    const height = horizontalLines[row + 1] - y;
+                        // Only include regions with reasonable size
+                        const width = maxX - minX + 1;
+                        const height = maxY - minY + 1;
 
-                    // Skip very small regions (likely noise)
-                    if (width > 4 && height > 4) {
-                        sprites.push({
-                            frame: frameNum++,
-                            x: x,
-                            y: y,
-                            width: width,
-                            height: height,
-                            row: row,
-                            col: col
-                        });
+                        if (width > 2 && height > 2) {
+                            regions.push({
+                                x: minX,
+                                y: minY,
+                                width: width,
+                                height: height,
+                                pixelCount: pixels.length
+                            });
+                        }
                     }
                 }
             }
 
-            updateStatus(`Detected ${sprites.length} sprites! (${verticalLines.length - 1} cols × ${horizontalLines.length - 1} rows)`);
+            // Sort regions in reading order (top-to-bottom, left-to-right)
+            regions.sort((a, b) => {
+                if (Math.abs(a.y - b.y) < 5) {
+                    // Same row (within 5 pixels) - sort by x
+                    return a.x - b.x;
+                }
+                // Different rows - sort by y
+                return a.y - b.y;
+            });
+
+            // Assign frame numbers
+            sprites = regions.map((region, index) => ({
+                frame: index,
+                x: region.x,
+                y: region.y,
+                width: region.width,
+                height: region.height
+            }));
+
+            updateStatus(`Detected ${sprites.length} sprites using flood-fill algorithm!`);
             console.log('Total sprites detected:', sprites.length);
 
             drawSprites();
