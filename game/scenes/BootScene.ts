@@ -35,18 +35,18 @@ export class BootScene extends Phaser.Scene {
     // Generate token sprites (keeping custom sprites for crypto tokens)
     SpriteGenerator.generateTokenSprites(this);
 
-    // Debug: Check if player atlas loaded
-    const playerTexture = this.textures.get('player');
-    const frameNames = playerTexture.getFrameNames();
-    console.log('Player atlas loaded with', frameNames.length, 'frames');
-    console.log('First 10 frame names:', frameNames.slice(0, 10));
+    // Debug: Check if NPC atlas loaded
+    const npcTexture = this.textures.get('npcs');
+    const frameNames = npcTexture.getFrameNames();
+    console.log('NPC atlas loaded with', frameNames.length, 'frames');
+    console.log('First 15 frame names:', frameNames.slice(0, 15));
 
-    // Create player animations from Pokemon FireRed/LeafGreen sprites
-    // Red protagonist walking animations (frames identified from sprite sheet at threshold 70)
+    // Create player animations from NPC sprite sheet
+    // Using Red character from NPC sheet (frames identified at threshold 70)
     // Using atlas with numeric string frame keys: "0", "1", "2", etc.
     this.anims.create({
       key: 'player-down',
-      frames: ['0', '1', '2'].map(frame => ({ key: 'player', frame })),
+      frames: ['0', '1', '2'].map(frame => ({ key: 'npcs', frame })),
       frameRate: 8,
       repeat: -1,
     });
@@ -54,28 +54,28 @@ export class BootScene extends Phaser.Scene {
 
     this.anims.create({
       key: 'player-up',
-      frames: ['32', '33', '34'].map(frame => ({ key: 'player', frame })),
+      frames: ['3', '4', '5'].map(frame => ({ key: 'npcs', frame })),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-left',
-      frames: ['50', '51', '52'].map(frame => ({ key: 'player', frame })),
+      frames: ['6', '7', '8'].map(frame => ({ key: 'npcs', frame })),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-right',
-      frames: ['69', '70', '71'].map(frame => ({ key: 'player', frame })),
+      frames: ['9', '10', '11'].map(frame => ({ key: 'npcs', frame })),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-idle',
-      frames: [{ key: 'player', frame: '1' }],
+      frames: [{ key: 'npcs', frame: '13' }],
       frameRate: 1,
     });
     console.log('Created player-idle animation');

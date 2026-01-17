@@ -26,8 +26,8 @@ export class OverworldScene extends Phaser.Scene {
     // Create grass pattern
     this.createGrassPattern();
 
-    // Create player sprite (using atlas, so frame is a string)
-    this.player = this.add.sprite(centerX, centerY, 'player', '0');
+    // Create player sprite (using NPC atlas for player character)
+    this.player = this.add.sprite(centerX, centerY, 'npcs', '13');
     this.player.setScale(0.75); // Scale down slightly for better fit
     this.player.play('player-idle');
 

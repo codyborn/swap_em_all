@@ -34,26 +34,26 @@ Simply click on each sprite in the viewer and note down the frame number shown.
 **🔽 Walking Down Animation** (facing camera):
 - Need 4 consecutive frames showing the walk cycle
 - Legs alternating, arms swinging
-- **Frames**: 0 to 2 (e.g., "42 to 45")
+- **Frames**: 0 to 2
 
 **🔼 Walking Up Animation** (back view):
 - Need 4 consecutive frames showing the walk cycle
 - Back of head visible
-- **Frames**: 32 to 34
+- **Frames**: 3 to 5
 
 **◀️ Walking Left Animation** (profile facing left):
 - Need 4 consecutive frames showing the walk cycle
 - Side view, facing left
-- **Frames**: 50 to 52
+- **Frames**: 6 to 8
 
 **▶️ Walking Right Animation** (profile facing right):
 - Need 4 consecutive frames showing the walk cycle
 - Side view, facing right
-- **Frames**: 69 to 71
+- **Frames**: 9 to 11
 
 **🧍 Idle/Standing Still**:
 - Single frame of character standing (usually first frame of down animation)
-- **Frame**: 1
+- **Frame**: 13
 
 ---
 
