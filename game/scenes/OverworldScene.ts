@@ -27,9 +27,9 @@ export class OverworldScene extends Phaser.Scene {
     this.createGrassPattern();
 
     // Create player sprite (using NPC atlas for player character)
-    this.player = this.add.sprite(centerX, centerY, 'npcs', '13');
+    // Start with idle frame facing down (frame 1 = middle of down walk cycle)
+    this.player = this.add.sprite(centerX, centerY, 'npcs', '1');
     this.player.setScale(0.75); // Scale down slightly for better fit
-    this.player.play('player-idle');
 
     // Enable physics for player
     this.physics.add.existing(this.player);
@@ -349,13 +349,14 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
-  private getIdleFrame(direction: string): number {
+  private getIdleFrame(direction: string): string {
+    // Return middle frame of each direction's walk cycle (using NPC atlas frames)
     switch (direction) {
-      case 'down': return 0;
-      case 'left': return 4;
-      case 'right': return 8;
-      case 'up': return 12;
-      default: return 0;
+      case 'down': return '1';   // middle of frames 0-2
+      case 'up': return '4';     // middle of frames 3-5
+      case 'left': return '7';   // middle of frames 6-8
+      case 'right': return '10'; // middle of frames 9-11
+      default: return '1';
     }
   }
 
