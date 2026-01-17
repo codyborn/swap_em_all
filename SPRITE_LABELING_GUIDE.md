@@ -1,334 +1,124 @@
 # Sprite Frame Labeling Guide
 
-**Purpose**: Help identify the correct frame numbers for player and NPC sprites from the Pokemon FireRed/LeafGreen sprite sheets.
+**Purpose**: Identify the correct frame numbers for player and NPC sprites from the Pokemon FireRed/LeafGreen sprite sheets.
 
 ---
 
-## How This Works
+## ✅ Tool Setup (COMPLETED)
 
-The sprite sheets are loaded as grids of 16x16 pixel frames. Phaser reads them **left-to-right, top-to-bottom**, starting at frame 0.
+The sprite viewer tool is now working perfectly!
+- **Location**: http://localhost:8080/sprite-viewer-auto.html
+- **Optimal Threshold**: 70 (set the slider to 70)
+- **Algorithm**: Flood-fill detection (groups connected non-white pixels)
 
-### Example Layout:
-```
-Frame 0  | Frame 1  | Frame 2  | Frame 3  | Frame 4  ...
-Frame 5  | Frame 6  | Frame 7  | Frame 8  | Frame 9  ...
-Frame 10 | Frame 11 | Frame 12 | Frame 13 | Frame 14 ...
-```
+---
+
+## 📋 What I Need From You
+
+Use the sprite viewer to identify frame numbers for:
+1. **Player sprites** - Red's walking animations (down, up, left, right, idle)
+2. **NPC sprites** - 5 specific character types
+
+Simply click on each sprite in the viewer and note down the frame number shown.
 
 ---
 
 ## 1. Player Sprite Classification
 
-### Current Implementation (INCORRECT)
-```typescript
-// BootScene.ts - Current animation frames
-'player-down':  Frames 0-3   (walking down)
-'player-up':    Frames 4-7   (walking up)
-'player-left':  Frames 8-11  (walking left)
-'player-right': Frames 12-15 (walking right)
-'player-idle':  Frame 0      (standing still)
-```
+**File**: Load `public/assets/sprites/player/player-sprites.png` in the viewer
 
-### What We Need
+**Looking for**: Red (male protagonist) - the character with brown hair and red cap
 
-**File**: `public/assets/sprites/player/player-sprites.png`
-- **Dimensions**: 673x638 pixels
-- **Frame Size**: 16x16 pixels
-- **Grid Calculation**: 673÷16 = ~42 frames per row
+### What I Need:
 
-**Looking for**: Red (male protagonist) walking animations
-
-#### Player Animation Requirements
-
-**Walking Down** (4 frames):
-- Frame showing character facing camera
-- Should have 4 frames showing walk cycle
+**🔽 Walking Down Animation** (facing camera):
+- Need 4 consecutive frames showing the walk cycle
 - Legs alternating, arms swinging
+- **Frames**: 0 to 2 (e.g., "42 to 45")
 
-**Current frames**: 0-3
-**Correct frames**: ___ to ___
-
----
-
-**Walking Up** (4 frames):
-- Frame showing character facing away (back view)
-- Should have 4 frames showing walk cycle
+**🔼 Walking Up Animation** (back view):
+- Need 4 consecutive frames showing the walk cycle
 - Back of head visible
+- **Frames**: ___ to ___
 
-**Current frames**: 4-7
-**Correct frames**: ___ to ___
+**◀️ Walking Left Animation** (profile facing left):
+- Need 4 consecutive frames showing the walk cycle
+- Side view, facing left
+- **Frames**: ___ to ___
 
----
+**▶️ Walking Right Animation** (profile facing right):
+- Need 4 consecutive frames showing the walk cycle
+- Side view, facing right
+- **Frames**: ___ to ___
 
-**Walking Left** (4 frames):
-- Frame showing character facing left
-- Should have 4 frames showing walk cycle
-- Profile view facing left
-
-**Current frames**: 8-11
-**Correct frames**: ___ to ___
-
----
-
-**Walking Right** (4 frames):
-- Frame showing character facing right
-- Should have 4 frames showing walk cycle
-- Profile view facing right
-
-**Current frames**: 12-15
-**Correct frames**: ___ to ___
-
----
-
-**Idle/Standing Still**:
+**🧍 Idle/Standing Still**:
 - Single frame of character standing (usually first frame of down animation)
-
-**Current frame**: 0
-**Correct frame**: ___
+- **Frame**: ___
 
 ---
 
 ## 2. NPC Sprite Classification
 
-### Current Implementation (INCORRECT)
-```typescript
-// NPC.ts - Current frame assignments
-professor:   Frame 3    (Professor Oak style)
-clerk:       Frame 25   (Store clerk/merchant)
-trader:      Frame 45   (Token trader)
-nurse:       Frame 20   (Nurse Joy style)
-gym_leader:  Frame 60   (Gym leader/trainer)
-```
+**File**: Load `public/assets/sprites/npcs/overworld-npcs.png` in the viewer
 
-### What We Need
+**Looking for**: Front-facing NPC sprites (standing still) that match these character types
 
-**File**: `public/assets/sprites/npcs/overworld-npcs.png`
-- **Dimensions**: 238x2967 pixels
-- **Frame Size**: 16x16 pixels
-- **Grid Calculation**: 238÷16 = ~14 frames per row, 2967÷16 = ~185 rows
-- **Total frames**: ~2590 frames (huge sheet!)
+### What I Need:
 
-**Looking for**: Static (front-facing) NPC sprites that match these archetypes:
+**👨‍🔬 Professor** (Professor Oak archetype):
+- Older man with lab coat, scholarly appearance
+- White or gray hair, friendly mentor look
+- **Frame**: ___
 
----
+**👔 Store Clerk** (PokeMart clerk):
+- Store uniform, young adult
+- Welcoming service look, behind-counter appearance
+- **Frame**: ___
 
-### Professor (Professor Oak archetype)
-**Description**:
-- Older man with lab coat
-- Scholarly appearance
-- White or gray hair
-- Friendly/mentor look
-
-**Current frame**: 3
-**Correct frame**: ___
-
-**Notes**: _______________________________________________
-
----
-
-### Store Clerk (PokeMart clerk)
-**Description**:
-- Store employee uniform
-- Young adult
-- Behind counter appearance
-- Welcoming/service look
-
-**Current frame**: 25
-**Correct frame**: ___
-
-**Notes**: _______________________________________________
-
----
-
-### Token Trader (Generic trader/businessman)
-**Description**:
+**💼 Token Trader** (Businessman/merchant):
 - Business attire or trader clothes
-- Could be a businessman or merchant
-- Not a standard Pokemon Center/Mart employee
+- Not a Pokemon Center/Mart employee
 - Entrepreneurial look
+- **Frame**: ___
 
-**Current frame**: 45
-**Correct frame**: ___
-
-**Notes**: _______________________________________________
-
----
-
-### Nurse (Nurse Joy archetype)
-**Description**:
+**👩‍⚕️ Nurse** (Nurse Joy archetype):
 - Nurse uniform (pink/white)
 - Medical cross or healthcare symbol
-- Healing center employee
-- Caring/medical professional look
+- Caring professional look
+- **Frame**: ___
 
-**Current frame**: 20
-**Correct frame**: ___
-
-**Notes**: _______________________________________________
-
----
-
-### Gym Leader (Trainer/Leader archetype)
-**Description**:
+**🥋 Gym Leader** (Trainer/leader):
 - Athletic or tough appearance
-- Trainer outfit
-- Confident stance
+- Trainer outfit, confident stance
 - Competitive/strong look
-
-**Current frame**: 60
-**Correct frame**: ___
-
-**Notes**: _______________________________________________
+- **Frame**: ___
 
 ---
 
-## 3. How to Identify Frame Numbers
+## 3. How to Use the Sprite Viewer
 
-### Method 1: Visual Inspection
-1. Open the sprite sheet in an image viewer
-2. Count frames left-to-right, top-to-bottom starting at 0
-3. Each 16x16 square is one frame
-4. Note the frame number when you find the right sprite
+1. Open http://localhost:8080/sprite-viewer-auto.html
+2. Click "Load Player Sprites" or "Load NPC Sprites" (or use file input)
+3. Set threshold slider to **70**
+4. Click on each sprite to see its frame number
+5. Fill in the frame numbers above
 
-### Method 2: Image Editor (Recommended)
-1. Open sprite sheet in Photoshop/GIMP/Aseprite
-2. Create a 16x16 grid overlay
-3. Number the grid cells starting from 0
-4. Identify sprites and record frame numbers
+The viewer shows frame numbers and lets you click to preview each sprite. Just note down the numbers!
 
-### Method 3: Online Tool
-1. Upload sprite sheet to https://www.spriters-resource.com/
-2. View the sheet with grid overlay
-3. Count frames to identify numbers
+---
 
-### Method 4: Quick Calculation
-For a sprite at position (column, row):
+## 4. Ready to Submit
+
+Once you've identified the frames, reply with the numbers in any format. Examples:
+
+**Simple format**:
 ```
-frame_number = (row × frames_per_row) + column
-```
+Player Down: 42-45
+Player Up: 46-49
+Player Left: 50-53
+Player Right: 54-57
+Player Idle: 42
 
-Example:
-- Sprite at column 5, row 2
-- Frames per row = 42
-- Frame number = (2 × 42) + 5 = 89
-
----
-
-## 4. What I Need From You
-
-### Format for Player Sprites
-```markdown
-## PLAYER SPRITE FRAMES
-
-Walking Down:
-- Start frame: ___
-- End frame: ___
-- Total frames: 4
-
-Walking Up:
-- Start frame: ___
-- End frame: ___
-- Total frames: 4
-
-Walking Left:
-- Start frame: ___
-- End frame: ___
-- Total frames: 4
-
-Walking Right:
-- Start frame: ___
-- End frame: ___
-- Total frames: 4
-
-Idle:
-- Frame: ___
-```
-
-### Format for NPC Sprites
-```markdown
-## NPC SPRITE FRAMES
-
-Professor: Frame ___
-Store Clerk: Frame ___
-Token Trader: Frame ___
-Nurse: Frame ___
-Gym Leader: Frame ___
-```
-
----
-
-## 5. Additional Information
-
-### Player Sprite Sheet Layout
-The player sprite sheet typically contains:
-- Red (male) - First character
-- Leaf (female) - Second character
-- Each has: Down, Up, Left, Right, Cycling, Fishing, etc.
-
-**We only need Red's walking animations (first character).**
-
-### NPC Sprite Sheet Layout
-The NPC sheet contains hundreds of characters:
-- Trainers of all types
-- Gym Leaders
-- Elite Four
-- NPCs (clerks, nurses, professors)
-- Random townspeople
-
-**We need 5 specific archetypes that match our game's NPCs.**
-
----
-
-## 6. Testing After Update
-
-Once you provide the frame numbers, I'll update:
-1. `game/scenes/BootScene.ts` - Player animation frames
-2. `game/entities/NPC.ts` - NPC frame mappings
-3. Test in game to verify sprites display correctly
-
----
-
-## 7. Quick Reference Images
-
-### Player Sprite Examples (What to Look For)
-
-**Walking Down** - Character facing camera, 4-frame walk cycle
-**Walking Up** - Character back view, 4-frame walk cycle
-**Walking Left** - Character side view facing left, 4-frame cycle
-**Walking Right** - Character side view facing right, 4-frame cycle
-
-### NPC Sprite Examples (What to Look For)
-
-**Professor** - Lab coat, scholarly
-**Clerk** - Store uniform, friendly
-**Trader** - Business attire, entrepreneurial
-**Nurse** - Medical uniform, caring
-**Gym Leader** - Athletic outfit, confident
-
----
-
-## 8. Optional: Better Sprite Recommendations
-
-If you find better alternatives while browsing, feel free to suggest:
-- Different character sprites that fit better
-- Additional animations we could use
-- Alternative NPC types
-
----
-
-## Ready to Label!
-
-Just fill in the frame numbers above and I'll update the code immediately. You can either:
-1. **Edit this file** and save your changes
-2. **Reply with the frame numbers** in a message
-3. **Create a new file** with the mappings
-
-**Format example**:
-```
-Player Down: 0-3
-Player Up: 4-7
-Player Left: 8-11
-Player Right: 12-15
 Professor: 150
 Clerk: 200
 Trader: 250
@@ -336,4 +126,16 @@ Nurse: 180
 Gym Leader: 300
 ```
 
-Thanks for helping classify these! 🎮
+**Or edit this file directly** and save your changes.
+
+I'll immediately update the game code and test to verify the sprites display correctly!
+
+---
+
+## Notes
+
+- **Player sprites**: We only need Red (male protagonist with red cap)
+- **NPC sprites**: Just need one good representative for each type
+- **Feel free to suggest alternatives** if you find better sprites that fit!
+
+Thanks for helping with this! 🎮
