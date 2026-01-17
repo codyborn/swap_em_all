@@ -35,6 +35,11 @@ export class BootScene extends Phaser.Scene {
     // Generate token sprites (keeping custom sprites for crypto tokens)
     SpriteGenerator.generateTokenSprites(this);
 
+    // Debug: Check if player atlas loaded
+    const playerTexture = this.textures.get('player');
+    console.log('Player texture loaded:', playerTexture);
+    console.log('Player texture frames:', playerTexture.getFrameNames());
+
     // Create player animations from Pokemon FireRed/LeafGreen sprites
     // Red protagonist walking animations (frames identified from sprite sheet at threshold 70)
     // Using atlas with numeric string frame keys: "0", "1", "2", etc.
@@ -44,6 +49,7 @@ export class BootScene extends Phaser.Scene {
       frameRate: 8,
       repeat: -1,
     });
+    console.log('Created player-down animation');
 
     this.anims.create({
       key: 'player-up',
@@ -71,6 +77,8 @@ export class BootScene extends Phaser.Scene {
       frames: [{ key: 'player', frame: '1' }],
       frameRate: 1,
     });
+    console.log('Created player-idle animation');
+    console.log('player-idle exists?', this.anims.exists('player-idle'));
 
     // GameBoy-style boot animation
     this.logo = this.add.text(
