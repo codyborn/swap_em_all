@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Phaser Sprite Atlas</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        .controls {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .output {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: #1a1a1a;
+            color: #4CAF50;
+            border: 1px solid #4CAF50;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status {
+            background: #1a1a1a;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            color: #4CAF50;
+        }
+        input[type="file"] {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        label {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Generate Phaser Sprite Atlas</h1>
+
+        <div class="controls">
+            <p><strong>Generate JSON atlas files for Phaser from sprite sheets</strong></p>
+            <p>Uses the same flood-fill algorithm (threshold 70) to match the viewer's frame numbers.</p>
+
+            <label><strong>Select Sprite Sheet:</strong></label>
+            <input type="file" id="fileInput" accept="image/png" onchange="loadImage(event)">
+
+            <br><br>
+
+            <button onclick="generatePlayerAtlas()">Generate Player Atlas</button>
+            <button onclick="generateNPCAtlas()">Generate NPC Atlas</button>
+        </div>
+
+        <div class="status" id="statusDiv" style="display: none;"></div>
+
+        <div class="output" id="outputDiv" style="display: none;">
+            <h3>Generated Atlas JSON</h3>
+            <p>Save this as <code id="filename"></code> in <code>public/assets/sprites/</code></p>
+            <textarea id="jsonOutput" readonly></textarea>
+            <br><br>
+            <button onclick="downloadJSON()">Download JSON File</button>
+            <button onclick="copyJSON()">Copy to Clipboard</button>
+        </div>
+    </div>
+
+    <script>
+        let currentImage = null;
+        let currentFilename = '';
+        const threshold = 70;
+
+        function updateStatus(message) {
+            const statusDiv = document.getElementById('statusDiv');
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+        }
+
+        function loadImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            currentFilename = file.name.replace('.png', '');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img;
+                    updateStatus(`Image loaded: ${img.width}x${img.height}px`);
+                };
+                img.onerror = function() {
+                    alert('Failed to load image.');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadSpriteByPath(path, filename) {
+            currentFilename = filename;
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                updateStatus(`Image loaded: ${path} (${img.width}x${img.height}px)`);
+            };
+            img.onerror = function() {
+                alert('Failed to load image from: ' + path);
+            };
+            img.src = path;
+        }
+
+        function isWhitePixel(imageData, x, y, width) {
+            const idx = (y * width + x) * 4;
+            const r = imageData.data[idx];
+            const g = imageData.data[idx + 1];
+            const b = imageData.data[idx + 2];
+            return r >= threshold && g >= threshold && b >= threshold;
+        }
+
+        function floodFill(imageData, startX, startY, width, height, visited) {
+            const pixels = [];
+            const queue = [{x: startX, y: startY}];
+
+            while (queue.length > 0) {
+                const {x, y} = queue.shift();
+
+                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+                const key = y * width + x;
+                if (visited.has(key)) continue;
+
+                if (isWhitePixel(imageData, x, y, width)) {
+                    visited.add(key);
+                    continue;
+                }
+
+                visited.add(key);
+                pixels.push({x, y});
+
+                queue.push({x: x + 1, y: y});
+                queue.push({x: x - 1, y: y});
+                queue.push({x: x, y: y + 1});
+                queue.push({x: x, y: y - 1});
+            }
+
+            return pixels;
+        }
+
+        function detectSprites() {
+            if (!currentImage) {
+                alert('Please load an image first!');
+                return null;
+            }
+
+            updateStatus('Detecting sprites with flood-fill algorithm (threshold 70)...');
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = currentImage.width;
+            tempCanvas.height = currentImage.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(currentImage, 0, 0);
+            const imageData = tempCtx.getImageData(0, 0, currentImage.width, currentImage.height);
+
+            const visited = new Set();
+            const regions = [];
+
+            for (let y = 0; y < currentImage.height; y++) {
+                for (let x = 0; x < currentImage.width; x++) {
+                    const key = y * currentImage.width + x;
+
+                    if (visited.has(key)) continue;
+
+                    if (isWhitePixel(imageData, x, y, currentImage.width)) {
+                        visited.add(key);
+                        continue;
+                    }
+
+                    const pixels = floodFill(imageData, x, y, currentImage.width, currentImage.height, visited);
+
+                    if (pixels.length > 0) {
+                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+                        for (const pixel of pixels) {
+                            minX = Math.min(minX, pixel.x);
+                            minY = Math.min(minY, pixel.y);
+                            maxX = Math.max(maxX, pixel.x);
+                            maxY = Math.max(maxY, pixel.y);
+                        }
+
+                        const width = maxX - minX + 1;
+                        const height = maxY - minY + 1;
+
+                        if (width > 2 && height > 2) {
+                            regions.push({
+                                x: minX,
+                                y: minY,
+                                width: width,
+                                height: height
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Sort in reading order
+            regions.sort((a, b) => {
+                if (Math.abs(a.y - b.y) < 5) {
+                    return a.x - b.x;
+                }
+                return a.y - b.y;
+            });
+
+            updateStatus(`Detected ${regions.length} sprites!`);
+            return regions;
+        }
+
+        function generateAtlasJSON(imagePath) {
+            const sprites = detectSprites();
+            if (!sprites) return;
+
+            const frames = {};
+
+            sprites.forEach((sprite, index) => {
+                frames[index] = {
+                    frame: { x: sprite.x, y: sprite.y, w: sprite.width, h: sprite.height },
+                    rotated: false,
+                    trimmed: false,
+                    spriteSourceSize: { x: 0, y: 0, w: sprite.width, h: sprite.height },
+                    sourceSize: { w: sprite.width, h: sprite.height }
+                };
+            });
+
+            const atlas = {
+                frames: frames,
+                meta: {
+                    app: "sprite-atlas-generator",
+                    version: "1.0",
+                    image: imagePath,
+                    format: "RGBA8888",
+                    size: { w: currentImage.width, h: currentImage.height },
+                    scale: "1",
+                    algorithm: "flood-fill-threshold-70"
+                }
+            };
+
+            return JSON.stringify(atlas, null, 2);
+        }
+
+        function generatePlayerAtlas() {
+            if (!currentImage) {
+                loadSpriteByPath('public/assets/sprites/player/player-sprites.png', 'player-sprites');
+                setTimeout(() => {
+                    const json = generateAtlasJSON('player-sprites.png');
+                    if (json) {
+                        displayOutput(json, 'player-sprites-atlas.json');
+                    }
+                }, 500);
+            } else {
+                const json = generateAtlasJSON('player-sprites.png');
+                if (json) {
+                    displayOutput(json, 'player-sprites-atlas.json');
+                }
+            }
+        }
+
+        function generateNPCAtlas() {
+            if (!currentImage) {
+                loadSpriteByPath('public/assets/sprites/npcs/overworld-npcs.png', 'overworld-npcs');
+                setTimeout(() => {
+                    const json = generateAtlasJSON('overworld-npcs.png');
+                    if (json) {
+                        displayOutput(json, 'overworld-npcs-atlas.json');
+                    }
+                }, 500);
+            } else {
+                const json = generateAtlasJSON('overworld-npcs.png');
+                if (json) {
+                    displayOutput(json, 'overworld-npcs-atlas.json');
+                }
+            }
+        }
+
+        function displayOutput(json, filename) {
+            document.getElementById('outputDiv').style.display = 'block';
+            document.getElementById('jsonOutput').value = json;
+            document.getElementById('filename').textContent = filename;
+            currentJSONFilename = filename;
+        }
+
+        let currentJSONFilename = '';
+
+        function downloadJSON() {
+            const json = document.getElementById('jsonOutput').value;
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentJSONFilename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyJSON() {
+            const textarea = document.getElementById('jsonOutput');
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value);
+            alert('JSON copied to clipboard!');
+        }
+    </script>
+</body>
+</html>

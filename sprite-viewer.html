@@ -172,8 +172,8 @@
         const previewCtx = previewCanvas.getContext('2d');
 
         const sprites = {
-            player: '/assets/sprites/player/player-sprites.png',
-            npcs: '/assets/sprites/npcs/overworld-npcs.png'
+            player: 'public/assets/sprites/player/player-sprites.png',
+            npcs: 'public/assets/sprites/npcs/overworld-npcs.png'
         };
 
         function loadSprite(spriteName) {
@@ -181,9 +181,15 @@
             const img = new Image();
             img.onload = function() {
                 currentImage = img;
+                console.log('Image loaded:', spriteName, img.width, 'x', img.height);
                 drawSprites();
             };
+            img.onerror = function() {
+                console.error('Failed to load image:', sprites[spriteName]);
+                alert('Failed to load sprite: ' + sprites[spriteName] + '\n\nMake sure you open this file from a web server or adjust the paths.');
+            };
             img.src = sprites[spriteName];
+            console.log('Loading sprite:', sprites[spriteName]);
         }
 
         function drawSprites() {

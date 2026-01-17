@@ -13,18 +13,19 @@ export class BootScene extends Phaser.Scene {
     // Set up loading bar
     this.createLoadingScreen();
 
-    // Load Pokemon FireRed/LeafGreen sprite sheets
-    // Player sprites (Red - male protagonist)
-    this.load.spritesheet('player', '/assets/sprites/player/player-sprites.png', {
-      frameWidth: 16,
-      frameHeight: 16,
-    });
+    // Load Pokemon FireRed/LeafGreen sprite sheets as atlases
+    // Using flood-fill detection (threshold 70) to match viewer frame numbers
+    this.load.atlas(
+      'player',
+      '/assets/sprites/player/player-sprites.png',
+      '/assets/sprites/player/player-sprites-atlas.json'
+    );
 
-    // NPC sprites
-    this.load.spritesheet('npcs', '/assets/sprites/npcs/overworld-npcs.png', {
-      frameWidth: 16,
-      frameHeight: 16,
-    });
+    this.load.atlas(
+      'npcs',
+      '/assets/sprites/npcs/overworld-npcs.png',
+      '/assets/sprites/npcs/overworld-npcs-atlas.json'
+    );
 
     // Tileset
     this.load.image('tileset', '/assets/sprites/tiles/tileset.png');
@@ -36,37 +37,38 @@ export class BootScene extends Phaser.Scene {
 
     // Create player animations from Pokemon FireRed/LeafGreen sprites
     // Red protagonist walking animations (frames identified from sprite sheet at threshold 70)
+    // Using atlas with numeric string frame keys: "0", "1", "2", etc.
     this.anims.create({
       key: 'player-down',
-      frames: this.anims.generateFrameNumbers('player', { start: 0, end: 2 }),
+      frames: ['0', '1', '2'].map(frame => ({ key: 'player', frame })),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-up',
-      frames: this.anims.generateFrameNumbers('player', { start: 32, end: 34 }),
+      frames: ['32', '33', '34'].map(frame => ({ key: 'player', frame })),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-left',
-      frames: this.anims.generateFrameNumbers('player', { start: 50, end: 52 }),
+      frames: ['50', '51', '52'].map(frame => ({ key: 'player', frame })),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-right',
-      frames: this.anims.generateFrameNumbers('player', { start: 69, end: 71 }),
+      frames: ['69', '70', '71'].map(frame => ({ key: 'player', frame })),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: 'player-idle',
-      frames: [{ key: 'player', frame: 1 }],
+      frames: [{ key: 'player', frame: '1' }],
       frameRate: 1,
     });
 

@@ -39,21 +39,21 @@ Simply click on each sprite in the viewer and note down the frame number shown.
 **🔼 Walking Up Animation** (back view):
 - Need 4 consecutive frames showing the walk cycle
 - Back of head visible
-- **Frames**: ___ to ___
+- **Frames**: 32 to 34
 
 **◀️ Walking Left Animation** (profile facing left):
 - Need 4 consecutive frames showing the walk cycle
 - Side view, facing left
-- **Frames**: ___ to ___
+- **Frames**: 50 to 52
 
 **▶️ Walking Right Animation** (profile facing right):
 - Need 4 consecutive frames showing the walk cycle
 - Side view, facing right
-- **Frames**: ___ to ___
+- **Frames**: 69 to 71
 
 **🧍 Idle/Standing Still**:
 - Single frame of character standing (usually first frame of down animation)
-- **Frame**: ___
+- **Frame**: 1
 
 ---
 
@@ -68,30 +68,30 @@ Simply click on each sprite in the viewer and note down the frame number shown.
 **👨‍🔬 Professor** (Professor Oak archetype):
 - Older man with lab coat, scholarly appearance
 - White or gray hair, friendly mentor look
-- **Frame**: ___
+- **Frame**: 40
 
 **👔 Store Clerk** (PokeMart clerk):
 - Store uniform, young adult
 - Welcoming service look, behind-counter appearance
-- **Frame**: ___
+- **Frame**: 567
 
 **💼 Token Trader** (Businessman/merchant):
 - Business attire or trader clothes
 - Not a Pokemon Center/Mart employee
 - Entrepreneurial look
-- **Frame**: ___
+- **Frame**: 381
 
 **👩‍⚕️ Nurse** (Nurse Joy archetype):
 - Nurse uniform (pink/white)
 - Medical cross or healthcare symbol
 - Caring professional look
-- **Frame**: ___
+- **Frame**: 163
 
 **🥋 Gym Leader** (Trainer/leader):
 - Athletic or tough appearance
 - Trainer outfit, confident stance
 - Competitive/strong look
-- **Frame**: ___
+- **Frame**: 398
 
 ---
 

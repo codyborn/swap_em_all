@@ -30,14 +30,15 @@ export class NPC {
     this.onInteract = config.onInteract;
     this.gymId = config.gymId;
 
-    // Create sprite from Pokemon FireRed/LeafGreen NPC spritesheet
+    // Create sprite from Pokemon FireRed/LeafGreen NPC atlas
     // Map NPC types to frame numbers (identified from sprite sheet at threshold 70)
-    const npcFrames: Record<NPCType, number> = {
-      professor: 40,     // Professor Oak style character (lab coat, scholarly)
-      clerk: 567,        // Store clerk style (PokeMart uniform)
-      trader: 381,       // Trader style character (businessman/merchant)
-      nurse: 163,        // Nurse Joy style (pink/white uniform)
-      gym_leader: 398,   // Gym leader style (trainer/athletic)
+    // Frame keys are strings in the atlas: "40", "567", etc.
+    const npcFrames: Record<NPCType, string> = {
+      professor: '40',     // Professor Oak style character (lab coat, scholarly)
+      clerk: '567',        // Store clerk style (PokeMart uniform)
+      trader: '381',       // Trader style character (businessman/merchant)
+      nurse: '163',        // Nurse Joy style (pink/white uniform)
+      gym_leader: '398',   // Gym leader style (trainer/athletic)
     };
 
     this.sprite = this.scene.add.sprite(
