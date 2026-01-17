@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon Sprite Frame Viewer (Auto-detect)</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        .info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .file-input {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .file-input input[type="file"] {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .controls {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .controls label {
+            margin-right: 10px;
+        }
+        .controls input, .controls select {
+            margin-right: 20px;
+            padding: 5px;
+        }
+        canvas {
+            border: 2px solid #4CAF50;
+            background: #fff;
+            cursor: crosshair;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .canvas-container {
+            overflow: auto;
+            max-height: 800px;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .selected-info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .selected-info h3 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .preview {
+            display: inline-block;
+            background: #fff;
+            border: 2px solid #4CAF50;
+            image-rendering: pixelated;
+            margin-right: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .copy-btn {
+            background: #2196F3;
+        }
+        .copy-btn:hover {
+            background: #0b7dda;
+        }
+        code {
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #4CAF50;
+        }
+        .quick-load {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .quick-load button {
+            background: #FF9800;
+            margin: 5px;
+        }
+        .quick-load button:hover {
+            background: #F57C00;
+        }
+        .status {
+            background: #1a1a1a;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Pokemon Sprite Frame Viewer (Auto-detect Borders)</h1>
+
+        <div class="info">
+            <p><strong>Instructions:</strong></p>
+            <ol>
+                <li><strong>Load a sprite sheet</strong> - Will automatically detect white border lines</li>
+                <li>Adjust sensitivity if detection isn't perfect</li>
+                <li>Click any sprite to see its frame number</li>
+                <li>Copy frame numbers and record in SPRITE_LABELING_GUIDE.md</li>
+            </ol>
+        </div>
+
+        <div class="quick-load">
+            <p><strong>Quick Load:</strong></p>
+            <button onclick="loadSpriteByPath('public/assets/sprites/player/player-sprites.png')">Load Player Sprites</button>
+            <button onclick="loadSpriteByPath('public/assets/sprites/npcs/overworld-npcs.png')">Load NPC Sprites</button>
+        </div>
+
+        <div class="file-input">
+            <p><strong>Or manually select a sprite sheet:</strong></p>
+            <input type="file" id="fileInput" accept="image/png" onchange="loadFromFile(event)">
+        </div>
+
+        <div class="controls">
+            <label><strong>Border Threshold (0-255):</strong></label>
+            <input type="range" id="thresholdSlider" min="200" max="255" value="250" style="width: 200px;">
+            <span id="thresholdValue">250</span>
+
+            <label><strong>Zoom:</strong></label>
+            <select id="zoomSelect">
+                <option value="1">1x</option>
+                <option value="2" selected>2x</option>
+                <option value="3">3x</option>
+                <option value="4">4x</option>
+            </select>
+
+            <label>
+                <input type="checkbox" id="showBorders" checked>
+                Show Detected Borders
+            </label>
+
+            <label>
+                <input type="checkbox" id="showFrames" checked>
+                Show Frame Numbers
+            </label>
+
+            <button onclick="detectSprites()">Re-detect Sprites</button>
+            <button onclick="resetView()">Reset View</button>
+        </div>
+
+        <div class="status" id="statusDiv" style="display: none;"></div>
+
+        <div class="canvas-container">
+            <canvas id="spriteCanvas"></canvas>
+        </div>
+
+        <div class="selected-info" id="selectedInfo" style="display: none;">
+            <h3>Selected Sprite</h3>
+            <canvas id="previewCanvas" class="preview"></canvas>
+            <div style="display: inline-block; vertical-align: top;">
+                <p><strong>Frame Number:</strong> <code id="frameNumber">-</code></p>
+                <p><strong>Dimensions:</strong> <code id="spriteDimensions">-</code></p>
+                <p><strong>Position:</strong> <code id="spritePosition">-</code></p>
+                <button class="copy-btn" onclick="copyFrameNumber()">Copy Frame Number</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentImage = null;
+        let zoom = 2;
+        let showBorders = true;
+        let showFrames = true;
+        let selectedFrame = null;
+        let sprites = [];
+        let threshold = 250;
+
+        const canvas = document.getElementById('spriteCanvas');
+        const ctx = canvas.getContext('2d');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
+
+        function updateStatus(message) {
+            const statusDiv = document.getElementById('statusDiv');
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+        }
+
+        function loadFromFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img;
+                    console.log('Image loaded:', img.width, 'x', img.height);
+                    updateStatus('Image loaded. Detecting sprites...');
+                    detectSprites();
+                };
+                img.onerror = function() {
+                    alert('Failed to load image. Please make sure it\'s a valid PNG file.');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadSpriteByPath(path) {
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                console.log('Image loaded:', path, img.width, 'x', img.height);
+                updateStatus('Image loaded. Detecting sprites...');
+                detectSprites();
+            };
+            img.onerror = function() {
+                alert('Failed to load image from: ' + path + '\n\nPlease use the file input instead or make sure you\'re running from a web server.');
+            };
+            img.src = path;
+        }
+
+        function isWhiteLine(imageData, x, y, width, height, isVertical) {
+            // Check if a line is mostly white
+            const samples = isVertical ? height : width;
+            let whiteCount = 0;
+
+            for (let i = 0; i < samples; i++) {
+                const px = isVertical ? x : x + i;
+                const py = isVertical ? y + i : y;
+                const idx = (py * width + px) * 4;
+
+                const r = imageData.data[idx];
+                const g = imageData.data[idx + 1];
+                const b = imageData.data[idx + 2];
+
+                // Check if pixel is white-ish
+                if (r >= threshold && g >= threshold && b >= threshold) {
+                    whiteCount++;
+                }
+            }
+
+            return whiteCount / samples > 0.8; // 80% must be white
+        }
+
+        function detectSprites() {
+            if (!currentImage) return;
+
+            updateStatus('Analyzing image...');
+
+            // Create a temporary canvas to read pixel data
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = currentImage.width;
+            tempCanvas.height = currentImage.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(currentImage, 0, 0);
+            const imageData = tempCtx.getImageData(0, 0, currentImage.width, currentImage.height);
+
+            // Detect vertical white lines (column separators)
+            const verticalLines = [0];
+            for (let x = 1; x < currentImage.width - 1; x++) {
+                if (isWhiteLine(imageData, x, 0, currentImage.width, currentImage.height, true)) {
+                    // Check if this line is not too close to the last one (avoid double-detection)
+                    if (x - verticalLines[verticalLines.length - 1] > 2) {
+                        verticalLines.push(x);
+                    }
+                }
+            }
+            verticalLines.push(currentImage.width);
+
+            // Detect horizontal white lines (row separators)
+            const horizontalLines = [0];
+            for (let y = 1; y < currentImage.height - 1; y++) {
+                if (isWhiteLine(imageData, 0, y, currentImage.width, currentImage.height, false)) {
+                    // Check if this line is not too close to the last one
+                    if (y - horizontalLines[horizontalLines.length - 1] > 2) {
+                        horizontalLines.push(y);
+                    }
+                }
+            }
+            horizontalLines.push(currentImage.height);
+
+            console.log('Detected vertical lines:', verticalLines.length);
+            console.log('Detected horizontal lines:', horizontalLines.length);
+
+            // Create sprite regions from the detected lines
+            sprites = [];
+            let frameNum = 0;
+
+            for (let row = 0; row < horizontalLines.length - 1; row++) {
+                for (let col = 0; col < verticalLines.length - 1; col++) {
+                    const x = verticalLines[col];
+                    const y = horizontalLines[row];
+                    const width = verticalLines[col + 1] - x;
+                    const height = horizontalLines[row + 1] - y;
+
+                    // Skip very small regions (likely noise)
+                    if (width > 4 && height > 4) {
+                        sprites.push({
+                            frame: frameNum++,
+                            x: x,
+                            y: y,
+                            width: width,
+                            height: height,
+                            row: row,
+                            col: col
+                        });
+                    }
+                }
+            }
+
+            updateStatus(`Detected ${sprites.length} sprites! (${verticalLines.length - 1} cols × ${horizontalLines.length - 1} rows)`);
+            console.log('Total sprites detected:', sprites.length);
+
+            drawSprites();
+        }
+
+        function drawSprites() {
+            if (!currentImage || sprites.length === 0) return;
+
+            // Calculate canvas size based on image and zoom
+            canvas.width = currentImage.width * zoom;
+            canvas.height = currentImage.height * zoom;
+
+            // Draw scaled image
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+
+            // Draw borders
+            if (showBorders) {
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
+                ctx.lineWidth = 2;
+
+                sprites.forEach(sprite => {
+                    ctx.strokeRect(
+                        sprite.x * zoom,
+                        sprite.y * zoom,
+                        sprite.width * zoom,
+                        sprite.height * zoom
+                    );
+                });
+            }
+
+            // Draw frame numbers
+            if (showFrames) {
+                ctx.font = `${Math.max(10, 12 * zoom)}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                sprites.forEach(sprite => {
+                    const centerX = (sprite.x + sprite.width / 2) * zoom;
+                    const centerY = (sprite.y + sprite.height / 2) * zoom;
+
+                    // Background
+                    const textWidth = ctx.measureText(sprite.frame).width;
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.fillRect(centerX - textWidth/2 - 4, centerY - 10, textWidth + 8, 20);
+
+                    // Text
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                    ctx.fillText(sprite.frame, centerX, centerY);
+                });
+            }
+
+            // Highlight selected frame
+            if (selectedFrame !== null) {
+                const sprite = sprites[selectedFrame];
+                if (sprite) {
+                    ctx.strokeStyle = 'rgba(76, 175, 80, 1)';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(
+                        sprite.x * zoom,
+                        sprite.y * zoom,
+                        sprite.width * zoom,
+                        sprite.height * zoom
+                    );
+                }
+            }
+        }
+
+        canvas.addEventListener('click', function(e) {
+            if (!currentImage || sprites.length === 0) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = (e.clientX - rect.left) / zoom;
+            const clickY = (e.clientY - rect.top) / zoom;
+
+            // Find which sprite was clicked
+            const clickedSprite = sprites.find(sprite =>
+                clickX >= sprite.x && clickX <= sprite.x + sprite.width &&
+                clickY >= sprite.y && clickY <= sprite.y + sprite.height
+            );
+
+            if (clickedSprite) {
+                selectedFrame = clickedSprite.frame;
+
+                // Update info
+                document.getElementById('selectedInfo').style.display = 'block';
+                document.getElementById('frameNumber').textContent = clickedSprite.frame;
+                document.getElementById('spriteDimensions').textContent = `${clickedSprite.width}x${clickedSprite.height}px`;
+                document.getElementById('spritePosition').textContent = `(${clickedSprite.x}, ${clickedSprite.y})`;
+
+                // Draw preview
+                const maxPreviewSize = 128;
+                const scale = Math.min(maxPreviewSize / clickedSprite.width, maxPreviewSize / clickedSprite.height);
+                previewCanvas.width = clickedSprite.width * scale;
+                previewCanvas.height = clickedSprite.height * scale;
+                previewCtx.imageSmoothingEnabled = false;
+                previewCtx.drawImage(
+                    currentImage,
+                    clickedSprite.x, clickedSprite.y, clickedSprite.width, clickedSprite.height,
+                    0, 0, previewCanvas.width, previewCanvas.height
+                );
+
+                drawSprites();
+            }
+        });
+
+        function copyFrameNumber() {
+            const frameNum = document.getElementById('frameNumber').textContent;
+            navigator.clipboard.writeText(frameNum);
+            alert(`Frame number ${frameNum} copied to clipboard!`);
+        }
+
+        function resetView() {
+            selectedFrame = null;
+            document.getElementById('selectedInfo').style.display = 'none';
+            drawSprites();
+        }
+
+        // Event listeners
+        document.getElementById('thresholdSlider').addEventListener('input', function(e) {
+            threshold = parseInt(e.target.value);
+            document.getElementById('thresholdValue').textContent = threshold;
+        });
+
+        document.getElementById('zoomSelect').addEventListener('change', function(e) {
+            zoom = parseInt(e.target.value);
+            drawSprites();
+        });
+
+        document.getElementById('showBorders').addEventListener('change', function(e) {
+            showBorders = e.target.checked;
+            drawSprites();
+        });
+
+        document.getElementById('showFrames').addEventListener('change', function(e) {
+            showFrames = e.target.checked;
+            drawSprites();
+        });
+    </script>
+</body>
+</html>
