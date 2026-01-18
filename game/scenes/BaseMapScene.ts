@@ -156,6 +156,26 @@ export abstract class BaseMapScene extends Phaser.Scene {
       // Tile 4: Wood floor
       ctx.fillStyle = '#654321';
       ctx.fillRect(tileSize * 4, 0, tileSize, tileSize);
+
+      // Tile 5: Water
+      ctx.fillStyle = '#1a5490';
+      ctx.fillRect(tileSize * 5, 0, tileSize, tileSize);
+
+      // Tile 6: Fence
+      ctx.fillStyle = '#654321';
+      ctx.fillRect(tileSize * 6, 0, tileSize, tileSize);
+
+      // Tile 7: Flowers (pink/red)
+      ctx.fillStyle = '#d84c6f';
+      ctx.fillRect(tileSize * 7, 0, tileSize, tileSize);
+
+      // Tile 8: Tree (dark green)
+      ctx.fillStyle = '#0a2910';
+      ctx.fillRect(tileSize * 8, 0, tileSize, tileSize);
+
+      // Tile 9: Building roof (red)
+      ctx.fillStyle = '#b53120';
+      ctx.fillRect(tileSize * 9, 0, tileSize, tileSize);
     }
 
     // Create texture from canvas
