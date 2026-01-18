@@ -132,6 +132,15 @@ export class OverworldScene extends Phaser.Scene {
       this.scene.pause();
       this.scene.launch('BagScene');
     });
+
+    // Handle scene resume
+    this.events.on('resume', () => {
+      // Reset keyboard input state when scene resumes
+      // This prevents keys held during pause from continuing to register
+      if (this.input.keyboard) {
+        this.input.keyboard.resetKeys();
+      }
+    });
   }
 
   update() {
@@ -510,6 +519,9 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   shutdown() {
+    // Clean up event listeners
+    this.events.off('resume');
+
     // Clean up NPCs
     for (const npc of this.npcs) {
       npc.destroy();

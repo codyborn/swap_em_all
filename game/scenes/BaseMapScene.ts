@@ -102,6 +102,17 @@ export abstract class BaseMapScene extends Phaser.Scene {
 
     // Create UI
     this.createUI();
+
+    // Handle scene resume
+    this.events.on('resume', this.onSceneResume, this);
+  }
+
+  protected onSceneResume() {
+    // Reset keyboard input state when scene resumes
+    // This prevents keys held during pause from continuing to register
+    if (this.input.keyboard) {
+      this.input.keyboard.resetKeys();
+    }
   }
 
   protected createTilemap(mapData: MapData) {
@@ -527,6 +538,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
   }
 
   shutdown() {
+    // Clean up event listeners
+    this.events.off('resume', this.onSceneResume, this);
+
+    // Clean up NPCs
     for (const npc of this.npcs) {
       npc.destroy();
     }
