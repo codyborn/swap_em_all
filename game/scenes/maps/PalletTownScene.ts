@@ -31,4 +31,13 @@ export class PalletTownScene extends BaseMapScene {
     // Add Pallet Town specific logic here if needed
     // For example, first-time tutorial triggers, etc.
   }
+
+  /**
+   * Override: Pallet Town is a safe zone (no wild encounters)
+   * According to LEVEL_DESIGN.md: "Encounters: None (safe zone)"
+   */
+  protected checkForEncounter() {
+    // Do nothing - Pallet Town has no wild encounters
+    // Wild tokens only appear in Route 1 (high grass areas)
+  }
 }
