@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { TitleScene } from './scenes/TitleScene';
 import { OverworldScene } from './scenes/OverworldScene';
+import { PalletTownScene } from './scenes/maps/PalletTownScene';
 import { EncounterScene } from './scenes/EncounterScene';
 import { StoreScene } from './scenes/StoreScene';
 import { TraderScene } from './scenes/TraderScene';
@@ -44,6 +45,7 @@ export function createPhaserConfig(parent: string): Phaser.Types.Core.GameConfig
       BootScene,
       TitleScene,
       OverworldScene,
+      PalletTownScene,
       EncounterScene,
       BattleScene,
       StoreScene,

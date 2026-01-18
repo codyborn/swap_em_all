@@ -74,10 +74,10 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private startGame() {
-    // Transition to overworld
+    // Transition to Pallet Town (new tilemap-based overworld)
     this.cameras.main.fade(500, 15, 56, 15);
     this.time.delayedCall(500, () => {
-      this.scene.start('OverworldScene');
+      this.scene.start('PalletTownScene');
     });
 
     // Play start sound (when we have audio)
