@@ -1,7 +1,6 @@
 'use client';
 
 import { GameBoyShell } from '@/components/game/GameBoyShell';
-import { HUD } from '@/components/ui/HUD';
 import { PhaserGame } from '@/components/game/PhaserGame';
 
 /**
@@ -14,7 +13,6 @@ export default function GameTestPage() {
   return (
     <GameBoyShell>
       <div className="w-full h-full relative bg-[#0f380f]">
-        <HUD />
         <PhaserGame />
       </div>
     </GameBoyShell>

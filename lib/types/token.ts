@@ -11,6 +11,7 @@ export interface CaughtToken {
   purchasePrice: number;
   currentPrice: number;
   peakPrice: number;
+  maxGain: number; // Maximum relative gain (high-water mark)
   lastPriceUpdate: number;
   priceHistory: PricePoint[];
 
@@ -66,7 +67,6 @@ export type TokenType =
   | 'defi'
   | 'layer1'
   | 'layer2'
-  | 'stablecoin'
   | 'meme'
   | 'exchange'
   | 'governance'
@@ -142,12 +142,6 @@ export const DEFAULT_MOVES: Move[] = [
 // Helper to determine token type based on symbol
 export function getTokenType(symbol: string): TokenType {
   const typeMap: Record<string, TokenType> = {
-    // Stablecoins
-    USDC: 'stablecoin',
-    USDT: 'stablecoin',
-    DAI: 'stablecoin',
-    BUSD: 'stablecoin',
-
     // Layer 1
     ETH: 'layer1',
     BTC: 'layer1',
@@ -166,6 +160,8 @@ export function getTokenType(symbol: string): TokenType {
     SUSHI: 'defi',
     CRV: 'defi',
     SNX: 'defi',
+    USDC: 'defi',
+    DAI: 'defi',
 
     // Meme
     DOGE: 'meme',
@@ -196,7 +192,6 @@ export function getBaseStats(tokenType: TokenType): Partial<TokenStats> {
     layer1: { attack: 12, defense: 12, speed: 8, hp: 55 },
     defi: { attack: 11, defense: 10, speed: 12, hp: 50 },
     layer2: { attack: 10, defense: 11, speed: 14, hp: 48 },
-    stablecoin: { attack: 8, defense: 15, speed: 10, hp: 60 },
     meme: { attack: 15, defense: 8, speed: 15, hp: 45 },
     exchange: { attack: 11, defense: 11, speed: 11, hp: 52 },
     governance: { attack: 10, defense: 12, speed: 9, hp: 53 },

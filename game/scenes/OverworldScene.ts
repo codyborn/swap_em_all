@@ -4,12 +4,21 @@ import { NPC, NPCType } from '../entities/NPC';
 export class OverworldScene extends Phaser.Scene {
   private player?: Phaser.GameObjects.Sprite;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
-  private moveSpeed = 2;
+  private spaceKey?: Phaser.Input.Keyboard.Key;
+  private moveSpeed = 1;
   private stepCounter = 0;
   private encounterChance = 0.1; // 10% chance per step group
   private npcs: NPC[] = [];
   private interactText?: Phaser.GameObjects.Text;
   private lastDirection: string = 'down';
+  private dialogueBox?: Phaser.GameObjects.Rectangle;
+  private dialogueText?: Phaser.GameObjects.Text;
+  private dialogueArrow?: Phaser.GameObjects.Text;
+  private currentDialogue: string[] = [];
+  private currentDialogueIndex: number = 0;
+  private isShowingDialogue: boolean = false;
+  private dialogueCallback?: () => void;
+  private justPressedSpace: boolean = false;
 
   constructor() {
     super('OverworldScene');
@@ -44,6 +53,7 @@ export class OverworldScene extends Phaser.Scene {
 
     // Set up input
     this.cursors = this.input.keyboard?.createCursorKeys();
+    this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     // Add UI text
     const instructions = this.add.text(4, 4, 'Arrow Keys: Move\nE: Force Encounter\nSPACE: Interact', {
@@ -71,14 +81,43 @@ export class OverworldScene extends Phaser.Scene {
       }
     ).setOrigin(0.5).setScrollFactor(0).setVisible(false);
 
+    // Dialogue box (hidden by default)
+    this.dialogueBox = this.add.rectangle(
+      0,
+      this.cameras.main.height - 50,
+      this.cameras.main.width,
+      50,
+      0x000000,
+      0.85
+    ).setOrigin(0).setScrollFactor(0).setVisible(false);
+
+    this.dialogueText = this.add.text(
+      8,
+      this.cameras.main.height - 45,
+      '',
+      {
+        fontFamily: 'monospace',
+        fontSize: '9px',
+        color: '#9bbc0f',
+        lineSpacing: 2,
+        wordWrap: { width: this.cameras.main.width - 20 }
+      }
+    ).setScrollFactor(0).setVisible(false);
+
+    this.dialogueArrow = this.add.text(
+      this.cameras.main.width - 12,
+      this.cameras.main.height - 10,
+      '▼',
+      {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#9bbc0f',
+      }
+    ).setOrigin(0.5).setScrollFactor(0).setVisible(false);
+
     // Debug: Press E to trigger encounter
     this.input.keyboard?.on('keydown-E', () => {
       this.triggerEncounter();
-    });
-
-    // Press SPACE to interact
-    this.input.keyboard?.on('keydown-SPACE', () => {
-      this.checkNPCInteraction();
     });
 
     // Menu shortcuts
@@ -96,7 +135,27 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   update() {
-    if (!this.player || !this.cursors) return;
+    if (!this.player || !this.cursors || !this.spaceKey) return;
+
+    // Handle SPACE key for dialogue/interaction
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+      if (this.isShowingDialogue) {
+        this.advanceDialogue();
+      } else {
+        this.checkNPCInteraction();
+      }
+    }
+
+    // Handle DOWN arrow to advance dialogue
+    if (this.isShowingDialogue && Phaser.Input.Keyboard.JustDown(this.cursors.down)) {
+      this.advanceDialogue();
+    }
+
+    // Don't allow movement during dialogue
+    if (this.isShowingDialogue) {
+      this.checkNPCProximity(); // Still check proximity for when dialogue ends
+      return;
+    }
 
     let moving = false;
     let vx = 0;
@@ -192,14 +251,11 @@ export class OverworldScene extends Phaser.Scene {
       type: 'professor',
       name: 'Professor Oak',
       dialogue: [
-        'Welcome to Swap \'Em All!',
-        'Catch tokens by swapping USDC.',
-        'Good luck on your journey!',
+        'Welcome to Swap \'Em All!\nCatch tokens by swapping USDC.',
+        'Visit the Store to buy Pokeballs.',
+        'Then explore to find wild tokens!',
+        'Press C for your Cryptodex.\nGood luck, trainer!',
       ],
-      onInteract: () => {
-        this.scene.pause();
-        this.scene.launch('ProfessorScene');
-      },
     });
 
     // Store Clerk (top-right area)
@@ -244,8 +300,7 @@ export class OverworldScene extends Phaser.Scene {
       type: 'nurse',
       name: 'Nurse',
       dialogue: [
-        'Welcome to the Healing Center!',
-        'I can heal your tokens.',
+        'Let me heal your tokens!',
       ],
       onInteract: () => {
         this.scene.pause();
@@ -259,13 +314,24 @@ export class OverworldScene extends Phaser.Scene {
       x: centerX - 90,
       y: centerY,
       type: 'gym_leader',
-      name: 'Peg Master',
+      name: 'Stable Master',
       dialogue: [
-        'Stablecoin Gym Leader here!',
+        'I\'m the Stable Master!',
         'Ready to battle?',
       ],
       gymId: 'gym1',
       onInteract: () => {
+        const gameStore = (window as any).gameStore;
+        const inventory = gameStore?.getState().inventory || [];
+
+        if (inventory.length === 0) {
+          this.showDialogue([
+            'You need tokens to battle!',
+            'Come back when you\'ve caught some tokens.',
+          ]);
+          return;
+        }
+
         this.scene.pause();
         this.scene.launch('BattleScene', { type: 'gym', gymId: 'gym1' });
       },
@@ -284,6 +350,17 @@ export class OverworldScene extends Phaser.Scene {
       ],
       gymId: 'gym2',
       onInteract: () => {
+        const gameStore = (window as any).gameStore;
+        const inventory = gameStore?.getState().inventory || [];
+
+        if (inventory.length === 0) {
+          this.showDialogue([
+            'You need tokens to battle!',
+            'Come back when you\'ve caught some tokens.',
+          ]);
+          return;
+        }
+
         this.scene.pause();
         this.scene.launch('BattleScene', { type: 'gym', gymId: 'gym2' });
       },
@@ -302,6 +379,17 @@ export class OverworldScene extends Phaser.Scene {
       ],
       gymId: 'gym3',
       onInteract: () => {
+        const gameStore = (window as any).gameStore;
+        const inventory = gameStore?.getState().inventory || [];
+
+        if (inventory.length === 0) {
+          this.showDialogue([
+            'You need tokens to battle!',
+            'Come back when you\'ve caught some tokens.',
+          ]);
+          return;
+        }
+
         this.scene.pause();
         this.scene.launch('BattleScene', { type: 'gym', gymId: 'gym3' });
       },
@@ -335,10 +423,60 @@ export class OverworldScene extends Phaser.Scene {
 
     for (const npc of this.npcs) {
       if (npc.isNearPlayer(this.player, 25)) {
-        npc.interact();
+        // Show dialogue first, then interact
+        this.showDialogue(npc.dialogue, () => {
+          if (npc.onInteract) {
+            npc.onInteract();
+          }
+        });
         return;
       }
     }
+  }
+
+  private showDialogue(dialogue: string[], onComplete?: () => void) {
+    this.isShowingDialogue = true;
+    this.currentDialogue = dialogue;
+    this.currentDialogueIndex = 0;
+    this.dialogueCallback = onComplete;
+
+    // Hide interact prompt
+    this.interactText?.setVisible(false);
+
+    // Show dialogue UI
+    this.dialogueBox?.setVisible(true);
+    this.dialogueText?.setVisible(true);
+    this.dialogueArrow?.setVisible(true);
+
+    // Display first line
+    this.dialogueText?.setText(this.currentDialogue[0]);
+  }
+
+  private advanceDialogue() {
+    this.currentDialogueIndex++;
+
+    if (this.currentDialogueIndex < this.currentDialogue.length) {
+      // Show next line
+      this.dialogueText?.setText(this.currentDialogue[this.currentDialogueIndex]);
+    } else {
+      // Dialogue complete
+      this.hideDialogue();
+      if (this.dialogueCallback) {
+        this.dialogueCallback();
+        this.dialogueCallback = undefined;
+      }
+    }
+  }
+
+  private hideDialogue() {
+    this.isShowingDialogue = false;
+    this.currentDialogue = [];
+    this.currentDialogueIndex = 0;
+
+    // Hide dialogue UI
+    this.dialogueBox?.setVisible(false);
+    this.dialogueText?.setVisible(false);
+    this.dialogueArrow?.setVisible(false);
   }
 
   private checkForEncounter() {

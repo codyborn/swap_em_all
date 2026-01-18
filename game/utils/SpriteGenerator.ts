@@ -43,8 +43,9 @@ export class SpriteGenerator {
     const key = 'player';
     if (!scene.textures.exists(key)) {
       const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
-      if (texture) {
-        texture.draw(0, 0, canvas);
+      if (texture && texture.context) {
+        const context = texture.context;
+        context.drawImage(canvas, 0, 0);
         texture.refresh();
 
         // Manually add frames (4x4 grid of 16x16 frames)
@@ -220,8 +221,9 @@ export class SpriteGenerator {
 
     // Create texture
     const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
-    if (texture) {
-      texture.draw(0, 0, canvas);
+    if (texture && texture.context) {
+      const context = texture.context;
+      context.drawImage(canvas, 0, 0);
       texture.refresh();
     }
   }
@@ -234,7 +236,6 @@ export class SpriteGenerator {
       { key: 'token-defi', color: '#1E90FF', symbol: 'D' },
       { key: 'token-layer1', color: '#FFD700', symbol: 'L' },
       { key: 'token-layer2', color: '#9370DB', symbol: '2' },
-      { key: 'token-stablecoin', color: '#00FF00', symbol: '$' },
       { key: 'token-meme', color: '#FF1493', symbol: 'M' },
       { key: 'token-exchange', color: '#FF8C00', symbol: 'E' },
       { key: 'token-governance', color: '#4169E1', symbol: 'G' },
@@ -288,26 +289,43 @@ export class SpriteGenerator {
 
     // Create texture from canvas
     if (!scene.textures.exists(key)) {
-      const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
-      if (texture) {
-        texture.draw(0, 0, canvas);
+      try {
+        const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
+        if (!texture) {
+          console.error(`Failed to create texture for ${key}`);
+          return;
+        }
+
+        const context = texture.getContext();
+        if (!context) {
+          console.error(`Failed to get context for texture ${key}`);
+          return;
+        }
+
+        context.drawImage(canvas, 0, 0);
         texture.refresh();
 
         // Manually add frames (3 frames of 16x16)
         for (let i = 0; i < 3; i++) {
           texture.add(i, 0, i * 16, 0, 16, 16);
         }
+      } catch (error) {
+        console.error(`Error creating token sprite ${key}:`, error);
       }
     }
 
     // Create idle animation
-    if (!scene.anims.exists(key + '-idle')) {
-      scene.anims.create({
-        key: key + '-idle',
-        frames: scene.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
-        frameRate: 4,
-        repeat: -1,
-      });
+    if (scene.textures.exists(key) && !scene.anims.exists(key + '-idle')) {
+      try {
+        scene.anims.create({
+          key: key + '-idle',
+          frames: scene.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
+          frameRate: 4,
+          repeat: -1,
+        });
+      } catch (error) {
+        console.error(`Error creating idle animation ${key}-idle:`, error);
+      }
     }
   }
 
@@ -356,26 +374,43 @@ export class SpriteGenerator {
 
     // Create texture from canvas
     if (!scene.textures.exists(key)) {
-      const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
-      if (texture) {
-        texture.draw(0, 0, canvas);
+      try {
+        const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
+        if (!texture) {
+          console.error(`Failed to create texture for ${key}`);
+          return;
+        }
+
+        const context = texture.getContext();
+        if (!context) {
+          console.error(`Failed to get context for texture ${key}`);
+          return;
+        }
+
+        context.drawImage(canvas, 0, 0);
         texture.refresh();
 
         // Manually add frames (4 frames of 24x24)
         for (let i = 0; i < 4; i++) {
           texture.add(i, 0, i * 24, 0, 24, 24);
         }
+      } catch (error) {
+        console.error(`Error creating battle sprite ${key}:`, error);
       }
     }
 
     // Create battle animation
-    if (!scene.anims.exists(key + '-anim')) {
-      scene.anims.create({
-        key: key + '-anim',
-        frames: scene.anims.generateFrameNumbers(key, { start: 0, end: 3 }),
-        frameRate: 6,
-        repeat: -1,
-      });
+    if (scene.textures.exists(key) && !scene.anims.exists(key + '-anim')) {
+      try {
+        scene.anims.create({
+          key: key + '-anim',
+          frames: scene.anims.generateFrameNumbers(key, { start: 0, end: 3 }),
+          frameRate: 6,
+          repeat: -1,
+        });
+      } catch (error) {
+        console.error(`Error creating battle animation ${key}-anim:`, error);
+      }
     }
   }
 

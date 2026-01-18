@@ -3,12 +3,13 @@ import { CaughtToken } from '../../lib/types/token';
 import { Badge } from '../../lib/types/battle';
 import { DamageCalculator } from '../../lib/utils/damageCalculator';
 
-type ViewMode = 'list' | 'detail' | 'badges';
+type ViewMode = 'list' | 'detail';
 
 export class CryptodexScene extends Phaser.Scene {
   private viewMode: ViewMode = 'list';
   private selectedTokenIndex: number = 0;
-  private badgeScrollOffset: number = 0;
+  private listScrollOffset: number = 0;
+  private maxVisibleTokens: number = 8;
 
   // UI elements
   private container?: Phaser.GameObjects.Container;
@@ -17,6 +18,8 @@ export class CryptodexScene extends Phaser.Scene {
   private instructionsText?: Phaser.GameObjects.Text;
   private tokenSprite?: Phaser.GameObjects.Sprite;
   private listSprites: Phaser.GameObjects.Sprite[] = [];
+  private prevMenuText?: Phaser.GameObjects.Text;
+  private nextMenuText?: Phaser.GameObjects.Text;
 
   constructor() {
     super('CryptodexScene');
@@ -45,6 +48,29 @@ export class CryptodexScene extends Phaser.Scene {
     // Divider
     this.add.rectangle(0, 24, this.cameras.main.width, 1, 0x9bbc0f).setOrigin(0);
 
+    // Navigation hints
+    this.prevMenuText = this.add.text(
+      4,
+      20,
+      '← Badges',
+      {
+        fontFamily: 'monospace',
+        fontSize: '7px',
+        color: '#306230',
+      }
+    ).setOrigin(0, 0.5);
+
+    this.nextMenuText = this.add.text(
+      this.cameras.main.width - 4,
+      20,
+      'Inventory →',
+      {
+        fontFamily: 'monospace',
+        fontSize: '7px',
+        color: '#306230',
+      }
+    ).setOrigin(1, 0.5);
+
     // Instructions (will update based on view)
     this.instructionsText = this.add.text(
       8,
@@ -69,7 +95,8 @@ export class CryptodexScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-UP', () => this.handleUp());
     this.input.keyboard?.on('keydown-DOWN', () => this.handleDown());
     this.input.keyboard?.on('keydown-ENTER', () => this.handleEnter());
-    this.input.keyboard?.on('keydown-B', () => this.handleBadgesToggle());
+    this.input.keyboard?.on('keydown-LEFT', () => this.switchToBadges());
+    this.input.keyboard?.on('keydown-RIGHT', () => this.switchToBag());
   }
 
   private handleEscape() {
@@ -92,9 +119,6 @@ export class CryptodexScene extends Phaser.Scene {
         this.selectedTokenIndex = (this.selectedTokenIndex - 1 + inventory.length) % inventory.length;
         this.showListView();
       }
-    } else if (this.viewMode === 'badges') {
-      this.badgeScrollOffset = Math.max(0, this.badgeScrollOffset - 1);
-      this.showBadgesView();
     }
   }
 
@@ -108,10 +132,6 @@ export class CryptodexScene extends Phaser.Scene {
         this.selectedTokenIndex = (this.selectedTokenIndex + 1) % inventory.length;
         this.showListView();
       }
-    } else if (this.viewMode === 'badges') {
-      const badges = store.badges || [];
-      this.badgeScrollOffset = Math.min(badges.length - 1, this.badgeScrollOffset + 1);
-      this.showBadgesView();
     }
   }
 
@@ -127,13 +147,6 @@ export class CryptodexScene extends Phaser.Scene {
     }
   }
 
-  private handleBadgesToggle() {
-    if (this.viewMode === 'badges') {
-      this.showListView();
-    } else {
-      this.showBadgesView();
-    }
-  }
 
   private showListView() {
     this.viewMode = 'list';
@@ -163,15 +176,32 @@ export class CryptodexScene extends Phaser.Scene {
         }
       );
     } else {
-      // Show list with selection and sprites
-      const listItems = inventory.map((token: CaughtToken, i: number) => {
-        const prefix = i === this.selectedTokenIndex ? '>' : ' ';
-        const healthStatus = DamageCalculator.getHealthStatus(token.health, token.maxHealth);
+      // Ensure scroll offset keeps selected token visible
+      if (this.selectedTokenIndex < this.listScrollOffset) {
+        this.listScrollOffset = this.selectedTokenIndex;
+      } else if (this.selectedTokenIndex >= this.listScrollOffset + this.maxVisibleTokens) {
+        this.listScrollOffset = this.selectedTokenIndex - this.maxVisibleTokens + 1;
+      }
+
+      // Calculate visible range
+      const visibleStart = this.listScrollOffset;
+      const visibleEnd = Math.min(this.listScrollOffset + this.maxVisibleTokens, inventory.length);
+      const visibleTokens = inventory.slice(visibleStart, visibleEnd);
+
+      // Show list with selection and sprites (only visible tokens)
+      const listItems = visibleTokens.map((token: CaughtToken, i: number) => {
+        const actualIndex = visibleStart + i;
+        const prefix = actualIndex === this.selectedTokenIndex ? '>' : ' ';
+        const healthInfo = `HP:${token.health}/${token.maxHealth}`;
         const levelInfo = `Lv.${token.level}`;
-        return `${prefix}       ${token.symbol.padEnd(8)} ${levelInfo.padEnd(6)} ${healthStatus}`;
+        return `${prefix}  ${token.symbol.padEnd(8)} ${levelInfo.padEnd(6)} ${healthInfo}`;
       });
 
-      const content = `${statsText}\n\n${listItems.join('\n')}`;
+      const scrollIndicator = inventory.length > this.maxVisibleTokens
+        ? `\n(${visibleStart + 1}-${visibleEnd} of ${inventory.length})`
+        : '';
+
+      const content = `${statsText}${scrollIndicator}\n\n${listItems.join('\n')}`;
 
       this.contentText = this.add.text(
         8,
@@ -181,15 +211,25 @@ export class CryptodexScene extends Phaser.Scene {
           fontFamily: 'monospace',
           fontSize: '9px',
           color: '#9bbc0f',
-          lineSpacing: 2,
+          lineSpacing: 4,
         }
       );
 
-      // Add sprites next to each token in the list
-      const startY = 32 + 20; // After stats text
-      inventory.forEach((token: CaughtToken, i: number) => {
+      // Add sprites next to each visible token in the list
+      // Text starts at y=32, with lineSpacing=4 and fontSize=9
+      // Layout: Stats (line 0), ScrollIndicator (line 1, optional), Empty (line 2), Tokens (line 3+)
+      const baseY = 32; // Starting Y position of text
+      const lineHeight = 9 + 4; // fontSize + lineSpacing = 13 pixels per line
+      const headerLines = 2 + (scrollIndicator ? 1 : 0); // Stats + Empty line + optional scroll indicator
+
+      // Calculate Y position for first token line's center
+      // Tokens start at headerLines, need to center sprite in the line
+      const firstTokenLineY = baseY + (headerLines * lineHeight);
+      const spriteStartY = firstTokenLineY + (lineHeight / 2) + 6; // Center in line + 6px adjustment
+
+      visibleTokens.forEach((token: CaughtToken, i: number) => {
         const spriteKey = `token-${token.type}`;
-        const sprite = this.add.sprite(18, startY + (i * 11), spriteKey);
+        const sprite = this.add.sprite(18, spriteStartY + (i * lineHeight), spriteKey);
         sprite.setScale(0.6);
         sprite.play(spriteKey + '-idle');
         this.listSprites.push(sprite);
@@ -197,7 +237,7 @@ export class CryptodexScene extends Phaser.Scene {
     }
 
     if (this.instructionsText) {
-      this.instructionsText.setText('↑/↓: Select  ENTER: Details  B: Badges  ESC: Exit');
+      this.instructionsText.setText('↑/↓: Select  ENTER: Details  ←/→: Switch Menu  ESC: Exit');
     }
   }
 
@@ -295,65 +335,6 @@ export class CryptodexScene extends Phaser.Scene {
     }
   }
 
-  private showBadgesView() {
-    this.viewMode = 'badges';
-    this.clearContent();
-
-    const store = (window as any).gameStore?.getState();
-    const badges: Badge[] = store?.badges || [];
-    const gymsDefeated: string[] = store?.gymsDefeated || [];
-
-    if (this.titleText) {
-      this.titleText.setText(`BADGE COLLECTION (${badges.length}/8)`);
-    }
-
-    const lines: string[] = [];
-
-    if (badges.length === 0) {
-      lines.push('No badges earned yet!\n');
-      lines.push('Challenge gym leaders to earn badges!');
-    } else {
-      // Sort badges by order
-      const sortedBadges = [...badges].sort((a, b) => a.order - b.order);
-
-      sortedBadges.forEach((badge, index) => {
-        if (index < this.badgeScrollOffset) return;
-        if (index >= this.badgeScrollOffset + 4) return; // Show 4 at a time
-
-        const prefix = index === this.badgeScrollOffset ? '>' : ' ';
-        lines.push(`${prefix} ${badge.icon} ${badge.name}`);
-        lines.push(`   ${badge.gymName}`);
-        lines.push(`   Leader: ${badge.gymLeader}`);
-
-        if (badge.earnedAt) {
-          const date = new Date(badge.earnedAt).toLocaleDateString();
-          lines.push(`   Earned: ${date}`);
-        }
-
-        lines.push('');
-      });
-
-      // Show progress
-      lines.push('');
-      lines.push(`Gyms Defeated: ${gymsDefeated.length}/8`);
-    }
-
-    this.contentText = this.add.text(
-      8,
-      32,
-      lines.join('\n'),
-      {
-        fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#9bbc0f',
-        lineSpacing: 2,
-      }
-    );
-
-    if (this.instructionsText) {
-      this.instructionsText.setText('↑/↓: Scroll  B/ESC: Back to List');
-    }
-  }
 
   private getHealthBar(current: number, max: number): string {
     if (current === 0) return '[----]';
@@ -378,6 +359,34 @@ export class CryptodexScene extends Phaser.Scene {
     this.listSprites = [];
   }
 
+  private switchToBadges() {
+    // Clean up
+    this.input.keyboard?.off('keydown-ESC');
+    this.input.keyboard?.off('keydown-UP');
+    this.input.keyboard?.off('keydown-DOWN');
+    this.input.keyboard?.off('keydown-ENTER');
+    this.input.keyboard?.off('keydown-LEFT');
+    this.input.keyboard?.off('keydown-RIGHT');
+
+    // Stop this scene and launch badges
+    this.scene.stop();
+    this.scene.launch('BadgesScene');
+  }
+
+  private switchToBag() {
+    // Clean up
+    this.input.keyboard?.off('keydown-ESC');
+    this.input.keyboard?.off('keydown-UP');
+    this.input.keyboard?.off('keydown-DOWN');
+    this.input.keyboard?.off('keydown-ENTER');
+    this.input.keyboard?.off('keydown-LEFT');
+    this.input.keyboard?.off('keydown-RIGHT');
+
+    // Stop this scene and launch bag
+    this.scene.stop();
+    this.scene.launch('BagScene');
+  }
+
   private exitCryptodex() {
     this.cameras.main.fade(300, 15, 56, 15);
 
@@ -387,7 +396,8 @@ export class CryptodexScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-UP');
       this.input.keyboard?.off('keydown-DOWN');
       this.input.keyboard?.off('keydown-ENTER');
-      this.input.keyboard?.off('keydown-B');
+      this.input.keyboard?.off('keydown-LEFT');
+      this.input.keyboard?.off('keydown-RIGHT');
 
       this.scene.stop();
       this.scene.resume('OverworldScene');
@@ -400,6 +410,7 @@ export class CryptodexScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown-UP');
     this.input.keyboard?.off('keydown-DOWN');
     this.input.keyboard?.off('keydown-ENTER');
-    this.input.keyboard?.off('keydown-B');
+    this.input.keyboard?.off('keydown-LEFT');
+    this.input.keyboard?.off('keydown-RIGHT');
   }
 }

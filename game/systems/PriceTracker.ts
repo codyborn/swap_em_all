@@ -12,8 +12,8 @@ export class PriceTracker {
   private intervalId?: NodeJS.Timeout;
   private isRunning: boolean = false;
 
-  constructor(updateIntervalMs: number = 300000) {
-    // Default: 5 minutes (300000ms)
+  constructor(updateIntervalMs: number = 60000) {
+    // Default: 1 minute (60000ms)
     this.updateInterval = updateIntervalMs;
   }
 
@@ -116,7 +116,9 @@ export class PriceTracker {
     const didLevelUp = LevelingSystem.checkLevelUp(token, newPrice);
 
     if (didLevelUp) {
-      const newLevel = LevelingSystem.calculateLevel(token.purchasePrice, newPrice);
+      const newPeakPrice = Math.max(token.peakPrice, newPrice);
+      const newMaxGain = LevelingSystem.calculateMaxGain(token.purchasePrice, newPeakPrice);
+      const newLevel = LevelingSystem.calculateLevel(newMaxGain);
       console.log(`🎉 ${token.symbol} leveled up to ${newLevel}!`);
 
       // Show notification
@@ -146,32 +148,50 @@ export class PriceTracker {
    * Show level-up notification to player
    */
   private showLevelUpNotification(symbol: string, newLevel: number) {
-    // Create a simple notification
-    // In production, this would integrate with a notification system
     if (typeof window !== 'undefined') {
       const notification = document.createElement('div');
-      notification.textContent = `${symbol} reached Level ${newLevel}!`;
+      notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 20px;">🎉</span>
+          <span><strong>${symbol}</strong> reached Level ${newLevel}!</span>
+        </div>
+      `;
       notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
         background: #9bbc0f;
         color: #0f380f;
-        padding: 12px 20px;
-        border-radius: 4px;
+        padding: 14px 20px;
+        border-radius: 8px;
         font-family: monospace;
+        font-size: 14px;
         font-weight: bold;
         z-index: 10000;
-        animation: slideIn 0.3s ease-out;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        opacity: 0;
+        transform: translateX(400px);
+        transition: all 0.3s ease-out;
+        pointer-events: none;
       `;
 
       document.body.appendChild(notification);
 
+      // Slide in
+      requestAnimationFrame(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateX(0)';
+      });
+
       // Remove after 3 seconds
       setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease-in';
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(400px)';
+
         setTimeout(() => {
-          document.body.removeChild(notification);
+          if (notification.parentNode) {
+            document.body.removeChild(notification);
+          }
         }, 300);
       }, 3000);
     }

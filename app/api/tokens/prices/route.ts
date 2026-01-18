@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchTokenPrices } from '@/lib/services/priceService';
 
 /**
  * POST /api/tokens/prices
@@ -6,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Body: { addresses: string[] }
  * Returns: { [address: string]: number }
+ *
+ * Note: addresses can be either actual addresses or symbol:address format
  */
 export async function POST(req: NextRequest) {
   try {
@@ -18,14 +21,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // For MVP, we'll simulate price fetching
-    // In production, this would call CoinGecko, CoinMarketCap, or a price oracle
-    const prices: Record<string, number> = {};
+    // Extract symbols from addresses (format: "SYMBOL" or "SYMBOL:address")
+    const symbolMap = new Map<string, string>();
+    const symbols: string[] = [];
 
-    // Simulate prices based on token symbol
-    // In production, you'd batch fetch from an API
-    for (const address of addresses) {
-      prices[address] = await fetchTokenPrice(address);
+    for (const addr of addresses) {
+      // Check if address is in "SYMBOL" or "SYMBOL:address" format
+      const parts = addr.split(':');
+      const symbol = parts[0];
+
+      symbols.push(symbol);
+      symbolMap.set(symbol, addr);
+    }
+
+    // Fetch prices using symbols
+    const symbolPrices = await fetchTokenPrices(symbols);
+
+    // Map back to original addresses
+    const prices: Record<string, number> = {};
+    for (const [symbol, address] of symbolMap.entries()) {
+      if (symbolPrices[symbol]) {
+        prices[address] = symbolPrices[symbol];
+      }
     }
 
     return NextResponse.json(prices);
@@ -39,39 +56,10 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * Fetch price for a single token
- * This is a simplified version - in production, use real API
- */
-async function fetchTokenPrice(address: string): Promise<number> {
-  // Simulated prices for demo purposes
-  // In production, call actual price APIs
-  const mockPrices: Record<string, number> = {
-    // Real addresses from Base chain
-    '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913': 1.0,    // USDC
-    '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb': 0.999, // DAI
-    '0x4200000000000000000000000000000000000006': 3250,  // WETH
-    '0x940181a94A35A4569E4529A3CDfB74e38FD98631': 25,    // AAVE
-    '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452': 10.5,  // wstETH (simulated)
-  };
-
-  // If address is in mock data, return it
-  if (mockPrices[address]) {
-    return mockPrices[address];
-  }
-
-  // Otherwise, generate a semi-random price that varies slightly
-  // This simulates market movement for demo purposes
-  const basePrice = 100;
-  const variation = (Math.random() - 0.5) * 20; // ±10%
-
-  return basePrice + variation;
-}
-
-/**
  * GET /api/tokens/prices
  * Get prices for multiple tokens via query params
  *
- * Query: ?addresses=0x123,0x456
+ * Query: ?addresses=SYMBOL1,SYMBOL2 or ?addresses=0x123,0x456
  * Returns: { [address: string]: number }
  */
 export async function GET(req: NextRequest) {
@@ -86,11 +74,29 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const addresses = addressesParam.split(',');
-    const prices: Record<string, number> = {};
+    const addresses = addressesParam.split(',').map((a) => a.trim());
 
-    for (const address of addresses) {
-      prices[address] = await fetchTokenPrice(address.trim());
+    // Extract symbols from addresses
+    const symbolMap = new Map<string, string>();
+    const symbols: string[] = [];
+
+    for (const addr of addresses) {
+      const parts = addr.split(':');
+      const symbol = parts[0];
+
+      symbols.push(symbol);
+      symbolMap.set(symbol, addr);
+    }
+
+    // Fetch prices using symbols
+    const symbolPrices = await fetchTokenPrices(symbols);
+
+    // Map back to original addresses
+    const prices: Record<string, number> = {};
+    for (const [symbol, address] of symbolMap.entries()) {
+      if (symbolPrices[symbol]) {
+        prices[address] = symbolPrices[symbol];
+      }
     }
 
     return NextResponse.json(prices);

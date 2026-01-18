@@ -92,7 +92,7 @@ export interface GymLeaderToken {
 export const GYM_LEADERS: GymLeader[] = [
   {
     id: 'gym1',
-    name: 'Peg Master',
+    name: 'Stable Master',
     gymName: 'Stablecoin Gym',
     specialty: 'Stablecoins',
     description: 'Master of stable assets and consistent value.',
@@ -100,13 +100,14 @@ export const GYM_LEADERS: GymLeader[] = [
       id: 'stable_badge',
       name: 'Stable Badge',
       gymName: 'Stablecoin Gym',
-      gymLeader: 'Peg Master',
+      gymLeader: 'Stable Master',
       description: 'Proof of mastery over stable assets',
       icon: '⚖️',
       order: 1,
     },
     team: [
-      { symbol: 'USDC', level: 5 },
+      { symbol: 'USDC', level: 1 },
+      { symbol: 'DAI', level: 1 },
     ],
   },
   {

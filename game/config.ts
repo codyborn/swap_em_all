@@ -9,6 +9,7 @@ import { CryptodexScene } from './scenes/CryptodexScene';
 import { ProfessorScene } from './scenes/ProfessorScene';
 import { HealingCenterScene } from './scenes/HealingCenterScene';
 import { BagScene } from './scenes/BagScene';
+import { BadgesScene } from './scenes/BadgesScene';
 import { BattleScene } from './scenes/BattleScene';
 
 export const GAME_CONFIG = {
@@ -51,6 +52,7 @@ export function createPhaserConfig(parent: string): Phaser.Types.Core.GameConfig
       ProfessorScene,
       HealingCenterScene,
       BagScene,
+      BadgesScene,
     ],
   };
 }

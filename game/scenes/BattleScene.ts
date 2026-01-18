@@ -102,13 +102,29 @@ export class BattleScene extends Phaser.Scene {
 
     // Player token (bottom-left)
     const playerSpriteKey = `token-${battle.player.token.type}-battle`;
-    this.playerSprite = this.add.sprite(40, centerY + 35, playerSpriteKey);
-    this.playerSprite.play(playerSpriteKey + '-anim');
+    if (this.textures.exists(playerSpriteKey)) {
+      this.playerSprite = this.add.sprite(40, centerY + 35, playerSpriteKey);
+      if (this.anims.exists(playerSpriteKey + '-anim')) {
+        this.playerSprite.play(playerSpriteKey + '-anim');
+      }
+    } else {
+      console.error(`Missing sprite texture: ${playerSpriteKey}`);
+      // Create a placeholder
+      this.playerSprite = this.add.rectangle(40, centerY + 35, 24, 24, 0xFF0000) as any;
+    }
 
     // Opponent token (top-right)
     const opponentSpriteKey = `token-${battle.opponent.token.type}-battle`;
-    this.opponentSprite = this.add.sprite(120, centerY - 20, opponentSpriteKey);
-    this.opponentSprite.play(opponentSpriteKey + '-anim');
+    if (this.textures.exists(opponentSpriteKey)) {
+      this.opponentSprite = this.add.sprite(120, centerY - 20, opponentSpriteKey);
+      if (this.anims.exists(opponentSpriteKey + '-anim')) {
+        this.opponentSprite.play(opponentSpriteKey + '-anim');
+      }
+    } else {
+      console.error(`Missing sprite texture: ${opponentSpriteKey}`);
+      // Create a placeholder
+      this.opponentSprite = this.add.rectangle(120, centerY - 20, 24, 24, 0xFF0000) as any;
+    }
 
     // Player info panel (top-left)
     this.createInfoPanel(
@@ -265,8 +281,10 @@ export class BattleScene extends Phaser.Scene {
   private updateMoveSelection() {
     this.moveMenuTexts.forEach((text, index) => {
       const isSelected = index === this.selectedMoveIndex;
-      const originalText = text.text.replace(/^> /, '  ');
-      text.setText(isSelected ? `>${originalText.substring(2)}` : originalText);
+      // Remove any existing prefix (either "> " or "  ")
+      const cleanText = text.text.replace(/^(> |  )/, '');
+      // Add appropriate prefix
+      text.setText(isSelected ? `> ${cleanText}` : `  ${cleanText}`);
       text.setColor(isSelected ? '#FFFF00' : '#FFFFFF');
     });
   }
@@ -322,19 +340,44 @@ export class BattleScene extends Phaser.Scene {
     }
     this.moveMenuTexts.forEach((text) => text.setVisible(false));
 
-    // Execute turn
+    // Start turn animation phase
+    this.battleManager.startTurnAnimation();
+
+    // Get turn order
+    const turnOrder = this.battleManager.getTurnOrder();
+    if (!turnOrder) return;
+
+    // Execute first move
     this.time.delayedCall(300, () => {
-      this.battleManager.executeTurn();
+      const battleEnded = this.battleManager.executeSideMove(turnOrder.first);
       this.updateBattleUI();
       this.updateBattleLog();
 
-      // Check if battle ended
-      const updatedBattle = this.battleManager.getBattle();
-      if (updatedBattle?.phase === 'ended') {
-        this.handleBattleEnd();
-      } else {
-        // Re-enable move selection for next turn
+      if (battleEnded) {
         this.time.delayedCall(1500, () => {
+          this.handleBattleEnd();
+        });
+        return;
+      }
+
+      // Execute second move after delay
+      this.time.delayedCall(1500, () => {
+        const battleEnded2 = this.battleManager.executeSideMove(turnOrder.second);
+        this.updateBattleUI();
+        this.updateBattleLog();
+
+        if (battleEnded2) {
+          this.time.delayedCall(1500, () => {
+            this.handleBattleEnd();
+          });
+          return;
+        }
+
+        // Complete turn
+        this.time.delayedCall(1500, () => {
+          this.battleManager.completeTurn();
+
+          // Re-enable move selection for next turn
           this.isSelectingMove = true;
           if (this.moveMenuBg) {
             this.moveMenuBg.setVisible(true);
@@ -344,7 +387,7 @@ export class BattleScene extends Phaser.Scene {
           // AI selects move for next turn
           this.battleManager.selectAIMove();
         });
-      }
+      });
     });
   }
 
@@ -400,6 +443,11 @@ export class BattleScene extends Phaser.Scene {
     if (!battle) return;
 
     const store = (window as any).gameStore?.getState();
+
+    // Save player token's health back to store
+    if (store && battle.player.token) {
+      store.updateTokenHealth(battle.player.token.address, battle.player.currentHP);
+    }
 
     if (battle.winner === 'player') {
       // Award rewards

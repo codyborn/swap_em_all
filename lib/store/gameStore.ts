@@ -120,8 +120,12 @@ export const useGameStore = create<GameState>()(
           const legacyToken = token as TokenCreature;
           const tokenType = getTokenType(legacyToken.symbol);
           const baseStats = getBaseStats(tokenType);
+          const purchasePrice = 100;
+          const currentPrice = 100;
+          const currGain = 0; // Starting at purchase price means 0 gain
+          const maxGain = 0; // Starting at purchase price means 0 gain
           const level = 1;
-          const stats = LevelingSystem.calculateStats(level, tokenType, baseStats);
+          const stats = LevelingSystem.calculateStats(level, currGain, tokenType, baseStats);
           const maxHealth = LevelingSystem.calculateMaxHealth(level, tokenType);
 
           caughtToken = {
@@ -129,11 +133,12 @@ export const useGameStore = create<GameState>()(
             name: legacyToken.name,
             address: legacyToken.address,
             caughtAt: legacyToken.caughtAt,
-            purchasePrice: 100, // Default for legacy tokens
-            currentPrice: 100,
-            peakPrice: 100,
+            purchasePrice,
+            currentPrice,
+            peakPrice: currentPrice,
+            maxGain,
             lastPriceUpdate: Date.now(),
-            priceHistory: [{ price: 100, timestamp: Date.now() }],
+            priceHistory: [{ price: currentPrice, timestamp: Date.now() }],
             level: 1,
             maxLevel: 1,
             experience: 0,
@@ -149,7 +154,7 @@ export const useGameStore = create<GameState>()(
             levelHistory: [
               {
                 level: 1,
-                price: 100,
+                price: currentPrice,
                 timestamp: Date.now(),
                 event: 'caught',
               },
@@ -159,17 +164,25 @@ export const useGameStore = create<GameState>()(
           // Already in new format, just add missing fields
           const newToken = token as Omit<CaughtToken, 'level' | 'health' | 'stats'>;
           const tokenType = newToken.type || getTokenType(newToken.symbol);
-          const level = LevelingSystem.calculateLevel(
+
+          // Calculate gains
+          const currGain = LevelingSystem.calculateCurrentGain(
             newToken.purchasePrice,
             newToken.currentPrice
           );
-          const stats = LevelingSystem.calculateStats(level, tokenType);
+          const maxGain = LevelingSystem.calculateMaxGain(
+            newToken.purchasePrice,
+            newToken.peakPrice || newToken.currentPrice
+          );
+          const level = LevelingSystem.calculateLevel(maxGain);
+          const stats = LevelingSystem.calculateStats(level, currGain, tokenType);
           const maxHealth = LevelingSystem.calculateMaxHealth(level, tokenType);
 
           caughtToken = {
             ...newToken,
             level,
             maxLevel: level,
+            maxGain: maxGain,
             experience: 0,
             health: maxHealth,
             maxHealth,
@@ -189,11 +202,20 @@ export const useGameStore = create<GameState>()(
 
       sellToken: (tokenAddress: string) =>
         set((state) => {
-          const token = state.inventory.find((t) => t.address === tokenAddress);
-          const salePrice = token ? Math.floor(token.currentPrice * 0.8) : 0; // 80% of current price
+          const tokenIndex = state.inventory.findIndex((t) => t.address === tokenAddress);
+          if (tokenIndex === -1) return state;
+
+          const token = state.inventory[tokenIndex];
+          const salePrice = Math.floor(token.currentPrice * 0.8); // 80% of current price
+
+          // Remove only the first token with this address (sell one at a time)
+          const newInventory = [
+            ...state.inventory.slice(0, tokenIndex),
+            ...state.inventory.slice(tokenIndex + 1)
+          ];
 
           return {
-            inventory: state.inventory.filter((t) => t.address !== tokenAddress),
+            inventory: newInventory,
             usdc: state.usdc + salePrice,
           };
         }),
@@ -285,13 +307,15 @@ export const useGameStore = create<GameState>()(
 
           const token = state.inventory[tokenIndex];
           const oldLevel = token.level;
-          const newLevel = LevelingSystem.calculateLevel(token.purchasePrice, newPrice);
           const newPeakPrice = Math.max(token.peakPrice, newPrice);
+          const newMaxGain = LevelingSystem.calculateMaxGain(token.purchasePrice, newPeakPrice);
+          const newLevel = LevelingSystem.calculateLevel(newMaxGain);
 
           // Calculate level up
           let updates: Partial<CaughtToken> = {
             currentPrice: newPrice,
             peakPrice: newPeakPrice,
+            maxGain: newMaxGain,
             lastPriceUpdate: Date.now(),
             priceHistory: [
               ...token.priceHistory,
@@ -301,8 +325,12 @@ export const useGameStore = create<GameState>()(
 
           if (newLevel > oldLevel) {
             // Level up!
-            const levelUpData = LevelingSystem.levelUp(token, newLevel);
+            const levelUpData = LevelingSystem.levelUp(token, newLevel, newMaxGain);
             updates = { ...updates, ...levelUpData };
+          } else {
+            // Even if no level up, update stats because attack is tied to curr_gain
+            const statsUpdate = LevelingSystem.updateStatsForPrice(token, newPrice);
+            updates = { ...updates, ...statsUpdate };
           }
 
           // Calculate damage from price drop

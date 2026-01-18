@@ -1,17 +1,30 @@
 import { NextResponse } from 'next/server';
+import { fetchTokenPrice } from '@/lib/services/priceService';
 
-// Import the token list with prices
+// Wild token encounters - using real tokens with CoinGecko support
+// address field uses symbol for price lookups
 const TOP_TOKENS = [
-  { symbol: 'WETH', name: 'Etheron', volume24h: 50000000, rarity: 'uncommon', address: '0x4200000000000000000000000000000000000006', price: 3250 },
-  { symbol: 'USDC', name: 'Stablecoin', volume24h: 100000000, rarity: 'common', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', price: 1 },
-  { symbol: 'DAI', name: 'Daicoin', volume24h: 30000000, rarity: 'common', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 0.999 },
-  { symbol: 'USDbC', name: 'Basecoin', volume24h: 40000000, rarity: 'common', address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', price: 1 },
-  { symbol: 'cbETH', name: 'Stakeron', volume24h: 25000000, rarity: 'uncommon', address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', price: 3100 },
-  { symbol: 'PEPE', name: 'Pepe', volume24h: 15000000, rarity: 'rare', address: '0x0000000000000000000000000000000000000000', price: 0.000015 },
-  { symbol: 'DEGEN', name: 'Degemon', volume24h: 8000000, rarity: 'rare', address: '0x0000000000000000000000000000000000000001', price: 0.012 },
-  { symbol: 'TOSHI', name: 'Toshimon', volume24h: 5000000, rarity: 'rare', address: '0x0000000000000000000000000000000000000002', price: 0.0008 },
-  { symbol: 'BRETT', name: 'Brettasaurus', volume24h: 3000000, rarity: 'legendary', address: '0x0000000000000000000000000000000000000003', price: 0.15 },
-  { symbol: 'MFER', name: 'Mfermon', volume24h: 2000000, rarity: 'legendary', address: '0x0000000000000000000000000000000000000004', price: 0.025 },
+  // Common - Stablecoins and wrapped assets
+  { symbol: 'USDC', name: 'USDC', volume24h: 100000000, rarity: 'common', address: 'USDC' },
+  { symbol: 'DAI', name: 'DAI', volume24h: 90000000, rarity: 'common', address: 'DAI' },
+  { symbol: 'WETH', name: 'Wrapped Ether', volume24h: 80000000, rarity: 'common', address: 'WETH' },
+
+  // Uncommon - Major DeFi tokens
+  { symbol: 'UNI', name: 'Uniswap', volume24h: 60000000, rarity: 'uncommon', address: 'UNI' },
+  { symbol: 'LINK', name: 'Chainlink', volume24h: 55000000, rarity: 'uncommon', address: 'LINK' },
+  { symbol: 'AAVE', name: 'Aave', volume24h: 50000000, rarity: 'uncommon', address: 'AAVE' },
+
+  // Rare - Layer 2 and specialized DeFi
+  { symbol: 'OP', name: 'Optimism', volume24h: 30000000, rarity: 'rare', address: 'OP' },
+  { symbol: 'ARB', name: 'Arbitrum', volume24h: 28000000, rarity: 'rare', address: 'ARB' },
+  { symbol: 'CRV', name: 'Curve', volume24h: 20000000, rarity: 'rare', address: 'CRV' },
+  { symbol: 'SNX', name: 'Synthetix', volume24h: 18000000, rarity: 'rare', address: 'SNX' },
+
+  // Legendary - Meme coins and governance
+  { symbol: 'DOGE', name: 'Dogecoin', volume24h: 15000000, rarity: 'legendary', address: 'DOGE' },
+  { symbol: 'SHIB', name: 'Shiba Inu', volume24h: 12000000, rarity: 'legendary', address: 'SHIB' },
+  { symbol: 'PEPE', name: 'Pepe', volume24h: 10000000, rarity: 'legendary', address: 'PEPE' },
+  { symbol: 'MKR', name: 'Maker', volume24h: 8000000, rarity: 'legendary', address: 'MKR' },
 ];
 
 // Volume-weighted random token selection
@@ -33,9 +46,13 @@ export async function GET() {
   try {
     const selectedToken = selectRandomToken();
 
+    // Fetch real-time price
+    const price = await fetchTokenPrice(selectedToken.symbol);
+
     return NextResponse.json({
       token: {
         ...selectedToken,
+        price, // Real-time price from CoinGecko
         spriteUrl: `/assets/sprites/tokens/${selectedToken.symbol.toLowerCase()}.png`,
         encounterText: `A wild ${selectedToken.name} appeared!`,
       },

@@ -116,7 +116,14 @@ export class BattleManager {
   private createGymToken(symbol: string, level: number): CaughtToken {
     const tokenType = getTokenType(symbol);
     const baseStats = getBaseStats(tokenType);
-    const stats = LevelingSystem.calculateStats(level, tokenType, baseStats);
+
+    // For gym tokens, calculate the gain needed to reach this level
+    // level = 1 + 3 * sqrt(maxGain * 100), solving for maxGain:
+    // maxGain = ((level - 1) / 3)^2 / 100
+    const maxGain = Math.pow((level - 1) / 3, 2) / 100;
+    const currGain = maxGain; // Gym tokens are at peak performance
+
+    const stats = LevelingSystem.calculateStats(level, currGain, tokenType, baseStats);
 
     return {
       symbol,
@@ -124,8 +131,9 @@ export class BattleManager {
       address: `gym_${symbol}_${Date.now()}`,
       caughtAt: Date.now(),
       purchasePrice: 1,
-      currentPrice: level,
-      peakPrice: level,
+      currentPrice: 1 + maxGain, // At peak
+      peakPrice: 1 + maxGain,
+      maxGain,
       lastPriceUpdate: Date.now(),
       priceHistory: [],
       level,
@@ -160,6 +168,76 @@ export class BattleManager {
   /**
    * Execute turn (both moves selected)
    */
+  /**
+   * Get turn order for this turn
+   * Returns which side goes first based on speed
+   */
+  getTurnOrder(): { first: 'player' | 'opponent', second: 'player' | 'opponent' } | null {
+    if (!this.battle) return null;
+
+    const { player, opponent } = this.battle;
+    const playerSpeed = player.temporaryStats.speed;
+    const opponentSpeed = opponent.temporaryStats.speed;
+
+    if (playerSpeed >= opponentSpeed) {
+      return { first: 'player', second: 'opponent' };
+    } else {
+      return { first: 'opponent', second: 'player' };
+    }
+  }
+
+  /**
+   * Execute a single side's move (for turn-based animation)
+   */
+  executeSideMove(side: 'player' | 'opponent'): boolean {
+    if (!this.battle) return false;
+
+    const { player, opponent } = this.battle;
+    const attacker = side === 'player' ? player : opponent;
+    const defender = side === 'player' ? opponent : player;
+    const move = attacker.selectedMove;
+
+    if (!move) return false;
+
+    this.executeMove(attacker, defender, move, side);
+
+    // Return true if battle ended
+    return this.checkBattleEnd();
+  }
+
+  /**
+   * Complete the turn (reset states, increment turn counter)
+   */
+  completeTurn(): void {
+    if (!this.battle) return;
+
+    const { player, opponent } = this.battle;
+
+    // Reset defending status
+    player.isDefending = false;
+    opponent.isDefending = false;
+
+    // Clear temporary stat changes (buffs last 1 turn)
+    player.temporaryStats = { ...player.token.stats };
+    opponent.temporaryStats = { ...opponent.token.stats };
+
+    // Clear selected moves
+    player.selectedMove = undefined;
+    opponent.selectedMove = undefined;
+
+    // Increment turn
+    this.battle.turnNumber++;
+    this.battle.phase = 'select_move';
+  }
+
+  /**
+   * Start turn animation phase
+   */
+  startTurnAnimation(): void {
+    if (!this.battle) return;
+    this.battle.phase = 'animating';
+  }
+
   executeTurn(): void {
     if (!this.battle || this.battle.phase !== 'select_move') return;
 

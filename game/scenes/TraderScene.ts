@@ -5,6 +5,8 @@ export class TraderScene extends Phaser.Scene {
   private menuText?: Phaser.GameObjects.Text;
   private selectedOption = 0;
   private inventory: any[] = [];
+  private currentState: 'menu' | 'confirm' = 'menu';
+  private tokenToSell?: any;
 
   constructor() {
     super('TraderScene');
@@ -89,7 +91,7 @@ export class TraderScene extends Phaser.Scene {
       this.input.keyboard?.on('keydown-DOWN', () => this.moveSelection(1));
       this.input.keyboard?.on('keydown-ENTER', () => this.confirmSelection());
       this.input.keyboard?.on('keydown-SPACE', () => this.confirmSelection());
-      this.input.keyboard?.on('keydown-ESC', () => this.exitTrader());
+      this.input.keyboard?.on('keydown-ESC', () => this.handleEscape());
     }
   }
 
@@ -101,45 +103,105 @@ export class TraderScene extends Phaser.Scene {
   }
 
   private updateMenuOptions() {
-    const options = this.inventory.map((token, i) =>
-      `${i === this.selectedOption ? '>' : ' '} ${token.symbol} (${token.name})`
-    );
-    options.push(
-      `${this.inventory.length === this.selectedOption ? '>' : ' '} Exit Trader`
-    );
-
-    this.menuText?.setText(options.join('\n'));
+    if (this.currentState === 'menu') {
+      // Show inventory with prices
+      const options = this.inventory.map((token, i) => {
+        const salePrice = Math.floor(token.currentPrice * 0.8);
+        return `${i === this.selectedOption ? '>' : ' '} ${token.symbol} (${token.name}) - ${salePrice} USDC`;
+      });
+      options.push(
+        `${this.inventory.length === this.selectedOption ? '>' : ' '} Exit Trader`
+      );
+      this.menuText?.setText(options.join('\n'));
+    } else if (this.currentState === 'confirm') {
+      // Show confirmation dialog
+      const salePrice = Math.floor(this.tokenToSell.currentPrice * 0.8);
+      const confirmOptions = [
+        `Sell ${this.tokenToSell.symbol} for ${salePrice} USDC?`,
+        '',
+        `${this.selectedOption === 0 ? '>' : ' '} Yes`,
+        `${this.selectedOption === 1 ? '>' : ' '} No`
+      ];
+      this.menuText?.setText(confirmOptions.join('\n'));
+    }
   }
 
   private moveSelection(direction: number) {
-    const maxOptions = this.inventory.length + 1; // +1 for exit option
-    this.selectedOption = (this.selectedOption + direction + maxOptions) % maxOptions;
+    if (this.currentState === 'menu') {
+      const maxOptions = this.inventory.length + 1; // +1 for exit option
+      this.selectedOption = (this.selectedOption + direction + maxOptions) % maxOptions;
+    } else if (this.currentState === 'confirm') {
+      const maxOptions = 2; // Yes/No
+      this.selectedOption = (this.selectedOption + direction + maxOptions) % maxOptions;
+    }
     this.updateMenuOptions();
   }
 
   private confirmSelection() {
-    if (this.selectedOption === this.inventory.length) {
-      // Exit option selected
-      this.exitTrader();
-      return;
-    }
-
-    const selectedToken = this.inventory[this.selectedOption];
-
-    // In production, would execute a sell transaction
-    // For now, just remove from inventory
-    const gameStore = (window as any).gameStore;
-
-    if (gameStore) {
-      gameStore.getState().sellToken(selectedToken.address);
-
-      this.dialogText?.setText(
-        `Sold ${selectedToken.symbol}!\nReceived USDC.\nThank you!`
-      );
-
-      this.time.delayedCall(2000, () => {
+    if (this.currentState === 'menu') {
+      if (this.selectedOption === this.inventory.length) {
+        // Exit option selected
         this.exitTrader();
-      });
+        return;
+      }
+
+      // Token selected - show confirmation
+      this.tokenToSell = this.inventory[this.selectedOption];
+      this.currentState = 'confirm';
+      this.selectedOption = 0; // Default to "Yes"
+      this.dialogText?.setVisible(false);
+      this.updateMenuOptions();
+    } else if (this.currentState === 'confirm') {
+      if (this.selectedOption === 0) {
+        // Yes - sell the token
+        const gameStore = (window as any).gameStore;
+        if (gameStore) {
+          const salePrice = Math.floor(this.tokenToSell.currentPrice * 0.8);
+          gameStore.getState().sellToken(this.tokenToSell.address);
+
+          // Hide menu, show confirmation message
+          this.menuText?.setVisible(false);
+          this.dialogText?.setVisible(true);
+          this.dialogText?.setText(
+            `Sold ${this.tokenToSell.symbol}!\nReceived ${salePrice} USDC.\nThank you!`
+          );
+
+          this.time.delayedCall(2000, () => {
+            this.exitTrader();
+          });
+        }
+      } else {
+        // No - go back to menu
+        this.currentState = 'menu';
+        this.selectedOption = 0;
+        this.tokenToSell = undefined;
+
+        // Reload inventory (in case it changed)
+        const gameStore = (window as any).gameStore;
+        if (gameStore) {
+          this.inventory = gameStore.getState().inventory;
+        }
+
+        // Show menu again
+        this.dialogText?.setVisible(false);
+        this.menuText?.setVisible(true);
+        this.updateMenuOptions();
+      }
+    }
+  }
+
+  private handleEscape() {
+    if (this.currentState === 'confirm') {
+      // Cancel confirmation, go back to menu
+      this.currentState = 'menu';
+      this.selectedOption = 0;
+      this.tokenToSell = undefined;
+      this.dialogText?.setVisible(false);
+      this.menuText?.setVisible(true);
+      this.updateMenuOptions();
+    } else {
+      // Exit trader
+      this.exitTrader();
     }
   }
 

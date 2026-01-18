@@ -26,6 +26,11 @@ export function PhaserGame() {
 
       const config = createPhaserConfig('phaser-game');
       gameRef.current = new Phaser.Game(config);
+
+      // Expose game instance for testing
+      if (typeof window !== 'undefined') {
+        (window as any).phaserGame = gameRef.current;
+      }
     };
 
     initGame();
@@ -35,6 +40,10 @@ export function PhaserGame() {
       if (gameRef.current) {
         gameRef.current.destroy(true);
         gameRef.current = null;
+      }
+      // Clean up window reference
+      if (typeof window !== 'undefined') {
+        delete (window as any).phaserGame;
       }
     };
   }, [isClient]);
