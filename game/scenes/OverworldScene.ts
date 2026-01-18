@@ -333,7 +333,7 @@ export class OverworldScene extends Phaser.Scene {
         }
 
         this.scene.pause();
-        this.scene.launch('BattleScene', { type: 'gym', gymId: 'gym1' });
+        this.scene.launch('BattleScene', { type: 'gym', gymId: 'gym1', callingScene: this.scene.key });
       },
     });
 
@@ -362,7 +362,7 @@ export class OverworldScene extends Phaser.Scene {
         }
 
         this.scene.pause();
-        this.scene.launch('BattleScene', { type: 'gym', gymId: 'gym2' });
+        this.scene.launch('BattleScene', { type: 'gym', gymId: 'gym2', callingScene: this.scene.key });
       },
     });
 
@@ -391,7 +391,7 @@ export class OverworldScene extends Phaser.Scene {
         }
 
         this.scene.pause();
-        this.scene.launch('BattleScene', { type: 'gym', gymId: 'gym3' });
+        this.scene.launch('BattleScene', { type: 'gym', gymId: 'gym3', callingScene: this.scene.key });
       },
     });
 
@@ -505,7 +505,7 @@ export class OverworldScene extends Phaser.Scene {
     // Transition to encounter scene
     this.time.delayedCall(200, () => {
       this.scene.pause();
-      this.scene.launch('EncounterScene');
+      this.scene.launch('EncounterScene', { callingScene: this.scene.key });
     });
   }
 

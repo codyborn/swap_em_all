@@ -522,7 +522,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
     this.cameras.main.flash(200, 255, 255, 255);
     this.time.delayedCall(200, () => {
       this.scene.pause();
-      this.scene.launch('EncounterScene');
+      this.scene.launch('EncounterScene', { callingScene: this.scene.key });
     });
   }
 

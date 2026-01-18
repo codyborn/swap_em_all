@@ -7,6 +7,7 @@ interface EncounterData {
   tokenAddress?: string;
   tokenRarity?: string;
   tokenPrice?: number;
+  callingScene?: string;
 }
 
 export class EncounterScene extends Phaser.Scene {
@@ -15,6 +16,7 @@ export class EncounterScene extends Phaser.Scene {
   private tokenSprite?: Phaser.GameObjects.Sprite;
   private currentToken?: EncounterData;
   private catchInProgress = false;
+  private callingScene: string = 'OverworldScene'; // Default for backwards compatibility
 
   constructor() {
     super('EncounterScene');
@@ -24,6 +26,11 @@ export class EncounterScene extends Phaser.Scene {
     // Reset state at the start of each encounter
     this.catchInProgress = false;
     this.currentToken = undefined;
+
+    // Store the calling scene so we can return to it
+    if (data.callingScene) {
+      this.callingScene = data.callingScene;
+    }
 
     const centerX = this.cameras.main.centerX;
     const centerY = this.cameras.main.centerY;
@@ -246,7 +253,7 @@ export class EncounterScene extends Phaser.Scene {
 
     this.time.delayedCall(300, () => {
       this.scene.stop();
-      this.scene.resume('OverworldScene');
+      this.scene.resume(this.callingScene);
     });
   }
 

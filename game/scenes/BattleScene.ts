@@ -8,12 +8,14 @@ interface BattleData {
   playerToken?: CaughtToken;
   opponentToken?: CaughtToken;
   gymId?: string;
+  callingScene?: string;
 }
 
 export class BattleScene extends Phaser.Scene {
   private battleManager: BattleManager;
   private selectedMoveIndex: number = 0;
   private isSelectingMove: boolean = true;
+  private callingScene: string = 'OverworldScene'; // Default for backwards compatibility
 
   // UI elements
   private playerSprite?: Phaser.GameObjects.Sprite;
@@ -35,6 +37,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(data: BattleData) {
+    // Store the calling scene so we can return to it
+    if (data.callingScene) {
+      this.callingScene = data.callingScene;
+    }
+
     const store = (window as any).gameStore?.getState();
 
     // Initialize battle
@@ -519,9 +526,9 @@ export class BattleScene extends Phaser.Scene {
     // Reset battle manager
     this.battleManager.reset();
 
-    // Return to overworld
+    // Return to calling scene
     this.scene.stop();
-    this.scene.resume('OverworldScene');
+    this.scene.resume(this.callingScene);
   }
 
   shutdown() {
