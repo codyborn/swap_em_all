@@ -5,7 +5,7 @@
  * Handles the full flow: approval check -> quote -> swap execution
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAccount, useChainId, usePublicClient, useWalletClient } from 'wagmi';
 import { Address, parseUnits, formatUnits } from 'viem';
 import {
@@ -54,7 +54,17 @@ export function useSwap(): UseSwapReturn {
   const { address } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
+  const { data: walletClient } = useWalletClient({ chainId });
+
+  // Debug: log when walletClient changes
+  useEffect(() => {
+    console.log('[useSwap] Wallet state:', {
+      address,
+      chainId,
+      hasWalletClient: !!walletClient,
+      hasPublicClient: !!publicClient,
+    });
+  }, [address, chainId, walletClient, publicClient]);
 
   const [state, setState] = useState<SwapState>({
     status: 'idle',
