@@ -183,22 +183,15 @@ export function useSwap(): UseSwapReturn {
         if (approvalResult.approval) {
           setState((s) => ({ ...s, status: 'approving' }));
 
-          // Estimate gas for approval
-          const approvalGas = await publicClient.estimateGas({
-            account: address,
-            to: approvalResult.approval.to as Address,
-            data: approvalResult.approval.data as `0x${string}`,
-            value: BigInt(approvalResult.approval.value),
-          });
+          // Pass approval transaction directly as returned by Trading API
+          const approvalTx = approvalResult.approval;
+
+          console.log('[useSwap] Approval transaction from API:', approvalTx);
 
           const approvalHash = await walletClient.sendTransaction({
-            account: address,
-            chain: connectedChain,
-            to: approvalResult.approval.to as Address,
-            data: approvalResult.approval.data as `0x${string}`,
-            value: BigInt(approvalResult.approval.value),
-            gas: approvalGas,
-            type: 'eip1559',
+            to: approvalTx.to as Address,
+            data: approvalTx.data as `0x${string}`,
+            value: BigInt(approvalTx.value),
           });
 
           // Wait for approval to be mined
@@ -236,26 +229,18 @@ export function useSwap(): UseSwapReturn {
         });
 
         // Step 5: Execute swap transaction
-        // Estimate gas if not provided by API
-        let swapGas = swapResult.swap.gasLimit ? BigInt(swapResult.swap.gasLimit) : undefined;
+        // Pass the swap object directly as returned by Trading API
+        // The API returns a ready-to-sign transaction
+        const swapTx = swapResult.swap;
 
-        if (!swapGas) {
-          swapGas = await publicClient.estimateGas({
-            account: address,
-            to: swapResult.swap.to as Address,
-            data: swapResult.swap.data as `0x${string}`,
-            value: BigInt(swapResult.swap.value),
-          });
-        }
+        console.log('[useSwap] Swap transaction from API:', swapTx);
 
         const swapHash = await walletClient.sendTransaction({
-          account: address,
-          chain: connectedChain,
-          to: swapResult.swap.to as Address,
-          data: swapResult.swap.data as `0x${string}`,
-          value: BigInt(swapResult.swap.value),
-          gas: swapGas,
-          type: 'eip1559',
+          to: swapTx.to as Address,
+          data: swapTx.data as `0x${string}`,
+          value: BigInt(swapTx.value),
+          // Only include gas if provided by API, let wallet estimate otherwise
+          ...(swapTx.gasLimit ? { gas: BigInt(swapTx.gasLimit) } : {}),
         });
 
         // Wait for swap to be mined
