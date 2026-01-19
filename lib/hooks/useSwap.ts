@@ -124,13 +124,24 @@ export function useSwap(): UseSwapReturn {
    */
   const executeSwap = useCallback(
     async (params: SwapParams): Promise<string | null> => {
+      console.log('[useSwap] executeSwap called with:', {
+        address,
+        hasWalletClient: !!walletClient,
+        hasPublicClient: !!publicClient,
+        chainId,
+        params
+      });
+
       if (!address || !walletClient || !publicClient) {
-        setState((s) => ({ ...s, error: 'Wallet not connected', status: 'error' }));
+        const errorMsg = `Wallet not connected: address=${!!address}, walletClient=${!!walletClient}, publicClient=${!!publicClient}`;
+        console.error('[useSwap]', errorMsg);
+        setState((s) => ({ ...s, error: errorMsg, status: 'error' }));
         return null;
       }
 
       try {
         const amountInWei = parseUnits(params.amountIn, params.decimalsIn).toString();
+        console.log('[useSwap] Amount in wei:', amountInWei);
 
         // Step 1: Check if approval is needed
         setState((s) => ({ ...s, status: 'checking_approval', error: null }));
@@ -205,7 +216,9 @@ export function useSwap(): UseSwapReturn {
 
         return swapHash;
       } catch (error) {
+        console.error('[useSwap] executeSwap error:', error);
         const message = error instanceof Error ? error.message : 'Swap failed';
+        console.error('[useSwap] Error message:', message);
         setState((s) => ({ ...s, status: 'error', error: message }));
         return null;
       }
@@ -239,12 +252,18 @@ export function useCatchToken() {
       tokenDecimals: number;
       usdcAmount: string;
     }) => {
+      console.log('[useCatchToken] Called with:', { params, chainId });
       const usdcAddress = CONTRACTS.USDC[chainId as keyof typeof CONTRACTS.USDC];
 
+      console.log('[useCatchToken] USDC address:', usdcAddress);
+
       if (!usdcAddress) {
-        throw new SwapServiceError('USDC not available on this chain', SwapErrorCodes.NETWORK_ERROR);
+        const error = new SwapServiceError('USDC not available on this chain', SwapErrorCodes.NETWORK_ERROR);
+        console.error('[useCatchToken]', error);
+        throw error;
       }
 
+      console.log('[useCatchToken] Calling swap.executeSwap...');
       return swap.executeSwap({
         tokenIn: usdcAddress,
         tokenOut: params.tokenAddress,
