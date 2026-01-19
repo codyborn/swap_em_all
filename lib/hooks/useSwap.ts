@@ -188,11 +188,15 @@ export function useSwap(): UseSwapReturn {
 
           console.log('[useSwap] Approval transaction from API:', approvalTx);
 
-          const approvalHash = await walletClient.sendTransaction({
+          const approvalTxParams = {
             to: approvalTx.to as Address,
             data: approvalTx.data as `0x${string}`,
             value: BigInt(approvalTx.value),
-          });
+          };
+
+          console.log('[useSwap] Sending approval transaction to wallet:', approvalTxParams);
+
+          const approvalHash = await walletClient.sendTransaction(approvalTxParams);
 
           // Wait for approval to be mined
           await publicClient.waitForTransactionReceipt({ hash: approvalHash });
@@ -235,13 +239,24 @@ export function useSwap(): UseSwapReturn {
 
         console.log('[useSwap] Swap transaction from API:', swapTx);
 
-        const swapHash = await walletClient.sendTransaction({
+        const swapTxParams = {
           to: swapTx.to as Address,
           data: swapTx.data as `0x${string}`,
           value: BigInt(swapTx.value),
           // Only include gas if provided by API, let wallet estimate otherwise
           ...(swapTx.gasLimit ? { gas: BigInt(swapTx.gasLimit) } : {}),
+        };
+
+        console.log('[useSwap] Sending swap transaction to wallet:', swapTxParams);
+        console.log('[useSwap] Transaction breakdown:', {
+          to: swapTxParams.to,
+          data: swapTxParams.data.substring(0, 66) + '...',
+          value: swapTxParams.value.toString(),
+          gas: swapTxParams.gas?.toString() || 'not set',
+          dataLength: swapTxParams.data.length,
         });
+
+        const swapHash = await walletClient.sendTransaction(swapTxParams);
 
         // Wait for swap to be mined
         await publicClient.waitForTransactionReceipt({ hash: swapHash });
