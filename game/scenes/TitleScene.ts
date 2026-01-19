@@ -48,7 +48,7 @@ export class TitleScene extends Phaser.Scene {
     });
 
     // Version text
-    this.add.text(centerX, this.cameras.main.height - 10, 'v0.1.0 - Built on Base', {
+    this.add.text(centerX, this.cameras.main.height - 10, 'v0.1.0 - Built on Unichain', {
       fontFamily: 'monospace',
       fontSize: '6px',
       color: '#306230',

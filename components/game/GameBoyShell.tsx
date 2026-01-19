@@ -20,7 +20,10 @@ export function GameBoyShell({ children }: GameBoyShellProps) {
             </div>
           </div>
           <div className="mt-2 text-xs text-gray-500 text-center font-sans">
-            GAME BOY BASE
+            UNI ARCADE
+          </div>
+          <div className="text-[10px] text-gray-400 text-center font-sans mt-1">
+            Built on Unichain
           </div>
         </div>
 

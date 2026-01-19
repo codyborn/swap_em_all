@@ -59,7 +59,7 @@ export default function Home() {
 
           <div className="absolute bottom-4 left-0 right-0 text-center">
             <p className="text-[8px] font-gameboy opacity-50">
-              v0.1.0 - Built on Base
+              v0.1.0 - Built on Unichain
             </p>
           </div>
         </div>
