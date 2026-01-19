@@ -51,7 +51,7 @@ export interface UseSwapReturn {
 // ============================================================================
 
 export function useSwap(): UseSwapReturn {
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient({ chainId });
@@ -60,11 +60,14 @@ export function useSwap(): UseSwapReturn {
   useEffect(() => {
     console.log('[useSwap] Wallet state:', {
       address,
-      chainId,
+      requestedChainId: chainId,
+      connectedChainId: connectedChain?.id,
+      connectedChainName: connectedChain?.name,
+      chainMismatch: connectedChain?.id !== chainId,
       hasWalletClient: !!walletClient,
       hasPublicClient: !!publicClient,
     });
-  }, [address, chainId, walletClient, publicClient]);
+  }, [address, chainId, connectedChain, walletClient, publicClient]);
 
   const [state, setState] = useState<SwapState>({
     status: 'idle',
