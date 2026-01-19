@@ -172,35 +172,66 @@ export class EncounterScene extends Phaser.Scene {
       gameStore.getState().usePokeball();
     }
 
-    // Simulate catch attempt with animation
+    // Execute real swap via SwapBridge
     this.cameras.main.shake(200, 0.005);
 
-    this.time.delayedCall(1000, () => {
-      // In production, this would execute a real swap
-      // For now, we'll simulate with a success rate based on rarity
-      const rarityRates: Record<string, number> = {
-        common: 0.9,
-        uncommon: 0.7,
-        rare: 0.5,
-        legendary: 0.3,
-      };
+    // Execute the swap
+    this.executeSwap(tokenSymbol, tokenName, tokenAddress);
+  }
 
-      const successRate = rarityRates[this.currentToken?.tokenRarity || 'common'] || 0.7;
-      const success = Math.random() < successRate;
+  private async executeSwap(
+    tokenSymbol: string | undefined,
+    tokenName: string | undefined,
+    tokenAddress: string | undefined
+  ) {
+    // Check if SwapBridge is available
+    const swapBridge = (window as any).swapBridge;
+    if (!swapBridge) {
+      console.error('SwapBridge not available');
+      this.encounterText?.setText('Swap unavailable!');
+      this.time.delayedCall(1500, () => {
+        this.returnToOverworld();
+      });
+      return;
+    }
 
-      if (success) {
+    try {
+      // Get token info from GAME_CONFIG
+      const gameConfig = await import('@/lib/web3/config').then((m) => m.GAME_CONFIG);
+      const usdcAmount = gameConfig.POKEBALL_COST_USDC; // 1 USDC per pokeball
+
+      // Get token info
+      const tokenInfo = await import('@/lib/web3/config').then((m) => {
+        return m.getTokenInfo(tokenAddress || '');
+      });
+
+      if (!tokenInfo || !tokenAddress) {
+        this.encounterText?.setText('Token not found!');
+        this.time.delayedCall(1500, () => {
+          this.returnToOverworld();
+        });
+        return;
+      }
+
+      // Update UI for swap steps
+      this.encounterText?.setText('Approving USDC...');
+
+      // Execute the swap
+      const result = await swapBridge.catchToken(tokenAddress, tokenInfo.decimals, usdcAmount);
+
+      if (result.success) {
         this.encounterText?.setText(`${tokenSymbol} caught!`);
 
-        // Add to inventory with V2 format
+        // Add to inventory
+        const gameStore = (window as any).gameStore;
         if (gameStore) {
           const currentPrice = this.currentToken?.tokenPrice || 100;
 
           gameStore.getState().catchToken({
             symbol: tokenSymbol || 'UNKNOWN',
             name: tokenName || 'Unknown Token',
-            address: tokenAddress || '0x0',
+            address: tokenAddress,
             caughtAt: Date.now(),
-            // V2 fields
             purchasePrice: currentPrice,
             currentPrice: currentPrice,
             peakPrice: currentPrice,
@@ -222,13 +253,34 @@ export class EncounterScene extends Phaser.Scene {
           this.returnToOverworld();
         });
       } else {
-        this.encounterText?.setText(`${tokenSymbol} escaped!`);
+        // Swap failed - return the pokeball
+        const gameStore = (window as any).gameStore;
+        if (gameStore) {
+          gameStore.getState().addPokeballs(1);
+        }
 
-        this.time.delayedCall(1500, () => {
+        const errorMsg = result.error || 'Swap failed';
+        console.error('Swap failed:', errorMsg);
+        this.encounterText?.setText(`Failed: ${errorMsg.substring(0, 20)}...`);
+
+        this.time.delayedCall(2500, () => {
           this.returnToOverworld();
         });
       }
-    });
+    } catch (error) {
+      console.error('Swap error:', error);
+
+      // Return the pokeball on error
+      const gameStore = (window as any).gameStore;
+      if (gameStore) {
+        gameStore.getState().addPokeballs(1);
+      }
+
+      this.encounterText?.setText('Swap error!');
+      this.time.delayedCall(1500, () => {
+        this.returnToOverworld();
+      });
+    }
   }
 
   private runAway() {
