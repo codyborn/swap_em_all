@@ -1,57 +1,90 @@
 import { NextResponse } from 'next/server';
 import { fetchTokenPrice } from '@/lib/services/priceService';
+import { TOKENS } from '@/lib/web3/config';
 
-// Wild token encounters - using real tokens with CoinGecko support
-// address field uses symbol for price lookups
-const TOP_TOKENS = [
-  // Common - Stablecoins and wrapped assets
-  { symbol: 'USDC', name: 'USDC', volume24h: 100000000, rarity: 'common', address: 'USDC' },
-  { symbol: 'DAI', name: 'DAI', volume24h: 90000000, rarity: 'common', address: 'DAI' },
-  { symbol: 'WETH', name: 'Wrapped Ether', volume24h: 80000000, rarity: 'common', address: 'WETH' },
+// Wild token encounters - Base mainnet tokens available for real swaps
+// These match the tokens in lib/web3/config.ts with real contract addresses
+const BASE_TOKENS = [
+  // Common - Stablecoins and wrapped assets (most liquid)
+  {
+    ...TOKENS.USDC,
+    volume24h: 100000000,
+    rarity: 'common',
+    priceSymbol: 'usd-coin', // CoinGecko ID
+  },
+  {
+    ...TOKENS.DAI,
+    volume24h: 90000000,
+    rarity: 'common',
+    priceSymbol: 'dai',
+  },
+  {
+    ...TOKENS.WETH,
+    volume24h: 80000000,
+    rarity: 'common',
+    priceSymbol: 'weth',
+  },
 
-  // Uncommon - Major DeFi tokens
-  { symbol: 'UNI', name: 'Uniswap', volume24h: 60000000, rarity: 'uncommon', address: 'UNI' },
-  { symbol: 'LINK', name: 'Chainlink', volume24h: 55000000, rarity: 'uncommon', address: 'LINK' },
-  { symbol: 'AAVE', name: 'Aave', volume24h: 50000000, rarity: 'uncommon', address: 'AAVE' },
+  // Uncommon - Base ecosystem token
+  {
+    ...TOKENS.AERO,
+    volume24h: 40000000,
+    rarity: 'uncommon',
+    priceSymbol: 'aerodrome-finance',
+  },
 
-  // Rare - Layer 2 and specialized DeFi
-  { symbol: 'OP', name: 'Optimism', volume24h: 30000000, rarity: 'rare', address: 'OP' },
-  { symbol: 'ARB', name: 'Arbitrum', volume24h: 28000000, rarity: 'rare', address: 'ARB' },
-  { symbol: 'CRV', name: 'Curve', volume24h: 20000000, rarity: 'rare', address: 'CRV' },
-  { symbol: 'SNX', name: 'Synthetix', volume24h: 18000000, rarity: 'rare', address: 'SNX' },
+  // Rare - Meme tokens on Base
+  {
+    ...TOKENS.BRETT,
+    volume24h: 20000000,
+    rarity: 'rare',
+    priceSymbol: 'based-brett',
+  },
+  {
+    ...TOKENS.DEGEN,
+    volume24h: 15000000,
+    rarity: 'rare',
+    priceSymbol: 'degen-base',
+  },
 
-  // Legendary - Meme coins and governance
-  { symbol: 'DOGE', name: 'Dogecoin', volume24h: 15000000, rarity: 'legendary', address: 'DOGE' },
-  { symbol: 'SHIB', name: 'Shiba Inu', volume24h: 12000000, rarity: 'legendary', address: 'SHIB' },
-  { symbol: 'PEPE', name: 'Pepe', volume24h: 10000000, rarity: 'legendary', address: 'PEPE' },
-  { symbol: 'MKR', name: 'Maker', volume24h: 8000000, rarity: 'legendary', address: 'MKR' },
+  // Legendary - Rare Base meme
+  {
+    ...TOKENS.TOSHI,
+    volume24h: 5000000,
+    rarity: 'legendary',
+    priceSymbol: 'toshi',
+  },
 ];
 
 // Volume-weighted random token selection
 function selectRandomToken() {
-  const totalVolume = TOP_TOKENS.reduce((sum, token) => sum + token.volume24h, 0);
+  const totalVolume = BASE_TOKENS.reduce((sum, token) => sum + token.volume24h, 0);
   let random = Math.random() * totalVolume;
 
-  for (const token of TOP_TOKENS) {
+  for (const token of BASE_TOKENS) {
     random -= token.volume24h;
     if (random <= 0) {
       return token;
     }
   }
 
-  return TOP_TOKENS[0]; // Fallback
+  return BASE_TOKENS[0]; // Fallback
 }
 
 export async function GET() {
   try {
     const selectedToken = selectRandomToken();
 
-    // Fetch real-time price
-    const price = await fetchTokenPrice(selectedToken.symbol);
+    // Fetch real-time price using CoinGecko ID
+    const price = await fetchTokenPrice(selectedToken.priceSymbol);
 
     return NextResponse.json({
       token: {
-        ...selectedToken,
+        symbol: selectedToken.symbol,
+        name: selectedToken.name,
+        address: selectedToken.address,
+        decimals: selectedToken.decimals,
+        rarity: selectedToken.rarity,
         price, // Real-time price from CoinGecko
         spriteUrl: `/assets/sprites/tokens/${selectedToken.symbol.toLowerCase()}.png`,
         encounterText: `A wild ${selectedToken.name} appeared!`,
