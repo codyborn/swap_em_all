@@ -193,10 +193,12 @@ export function useSwap(): UseSwapReturn {
 
           const approvalHash = await walletClient.sendTransaction({
             account: address,
+            chain: connectedChain,
             to: approvalResult.approval.to as Address,
             data: approvalResult.approval.data as `0x${string}`,
             value: BigInt(approvalResult.approval.value),
             gas: approvalGas,
+            type: 'eip1559',
           });
 
           // Wait for approval to be mined
@@ -248,10 +250,12 @@ export function useSwap(): UseSwapReturn {
 
         const swapHash = await walletClient.sendTransaction({
           account: address,
+          chain: connectedChain,
           to: swapResult.swap.to as Address,
           data: swapResult.swap.data as `0x${string}`,
           value: BigInt(swapResult.swap.value),
           gas: swapGas,
+          type: 'eip1559',
         });
 
         // Wait for swap to be mined
