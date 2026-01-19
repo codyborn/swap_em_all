@@ -188,10 +188,15 @@ export function useSwap(): UseSwapReturn {
 
           console.log('[useSwap] Approval transaction from API:', approvalTx);
 
+          // Get current gas prices for EIP-1559
+          const approvalFeeData = await publicClient.estimateFeesPerGas();
+
           const approvalTxParams = {
             to: approvalTx.to as Address,
             data: approvalTx.data as `0x${string}`,
             value: BigInt(approvalTx.value),
+            maxFeePerGas: approvalFeeData.maxFeePerGas,
+            maxPriorityFeePerGas: approvalFeeData.maxPriorityFeePerGas,
           };
 
           console.log('[useSwap] Sending approval transaction to wallet:', approvalTxParams);
@@ -239,12 +244,19 @@ export function useSwap(): UseSwapReturn {
 
         console.log('[useSwap] Swap transaction from API:', swapTx);
 
+        // Get current gas prices for EIP-1559
+        const feeData = await publicClient.estimateFeesPerGas();
+        console.log('[useSwap] Fee data from chain:', feeData);
+
         const swapTxParams = {
           to: swapTx.to as Address,
           data: swapTx.data as `0x${string}`,
           value: BigInt(swapTx.value),
-          // Only include gas if provided by API, let wallet estimate otherwise
+          // Gas limit
           ...(swapTx.gasLimit ? { gas: BigInt(swapTx.gasLimit) } : {}),
+          // EIP-1559 gas prices (required for Unichain and most L2s)
+          maxFeePerGas: feeData.maxFeePerGas,
+          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
         };
 
         console.log('[useSwap] Sending swap transaction to wallet:', swapTxParams);
@@ -253,6 +265,8 @@ export function useSwap(): UseSwapReturn {
           data: swapTxParams.data.substring(0, 66) + '...',
           value: swapTxParams.value.toString(),
           gas: swapTxParams.gas?.toString() || 'not set',
+          maxFeePerGas: swapTxParams.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: swapTxParams.maxPriorityFeePerGas?.toString(),
           dataLength: swapTxParams.data.length,
         });
 
