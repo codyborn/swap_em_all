@@ -183,10 +183,20 @@ export function useSwap(): UseSwapReturn {
         if (approvalResult.approval) {
           setState((s) => ({ ...s, status: 'approving' }));
 
-          const approvalHash = await walletClient.sendTransaction({
-            to: approvalResult.approval.to,
-            data: approvalResult.approval.data,
+          // Estimate gas for approval
+          const approvalGas = await publicClient.estimateGas({
+            account: address,
+            to: approvalResult.approval.to as Address,
+            data: approvalResult.approval.data as `0x${string}`,
             value: BigInt(approvalResult.approval.value),
+          });
+
+          const approvalHash = await walletClient.sendTransaction({
+            account: address,
+            to: approvalResult.approval.to as Address,
+            data: approvalResult.approval.data as `0x${string}`,
+            value: BigInt(approvalResult.approval.value),
+            gas: approvalGas,
           });
 
           // Wait for approval to be mined
@@ -224,11 +234,24 @@ export function useSwap(): UseSwapReturn {
         });
 
         // Step 5: Execute swap transaction
+        // Estimate gas if not provided by API
+        let swapGas = swapResult.swap.gasLimit ? BigInt(swapResult.swap.gasLimit) : undefined;
+
+        if (!swapGas) {
+          swapGas = await publicClient.estimateGas({
+            account: address,
+            to: swapResult.swap.to as Address,
+            data: swapResult.swap.data as `0x${string}`,
+            value: BigInt(swapResult.swap.value),
+          });
+        }
+
         const swapHash = await walletClient.sendTransaction({
-          to: swapResult.swap.to,
-          data: swapResult.swap.data,
+          account: address,
+          to: swapResult.swap.to as Address,
+          data: swapResult.swap.data as `0x${string}`,
           value: BigInt(swapResult.swap.value),
-          gas: swapResult.swap.gasLimit ? BigInt(swapResult.swap.gasLimit) : undefined,
+          gas: swapGas,
         });
 
         // Wait for swap to be mined
