@@ -1,87 +1,82 @@
 import { http, createConfig } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
+import { unichain } from 'wagmi/chains';
 import { coinbaseWallet, metaMask, walletConnect } from 'wagmi/connectors';
 
 // WalletConnect Project ID - Get from https://cloud.walletconnect.com/
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';
 
 export const config = createConfig({
-  chains: [base, baseSepolia],
+  chains: [unichain],
   connectors: [
     metaMask(),
     coinbaseWallet({ appName: "Swap 'Em All" }),
     walletConnect({ projectId }),
   ],
   transports: {
-    [base.id]: http(),
-    [baseSepolia.id]: http(),
+    [unichain.id]: http(),
   },
 });
 
-// Contract addresses
+// Contract addresses on Unichain
 export const CONTRACTS = {
   USDC: {
-    [base.id]: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-    [baseSepolia.id]: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+    [unichain.id]: '0x078d782b760474a361dda0af3839290b0ef57ad6',
   },
   UNISWAP_UNIVERSAL_ROUTER: {
-    [base.id]: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
-    [baseSepolia.id]: '0x050E797f3625EC8785265e1d9BDd4799b97528A1',
+    [unichain.id]: '0xef740bf23acae26f6492b10de645d6b98dc8eaf3',
   },
   PERMIT2: {
-    [base.id]: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
-    [baseSepolia.id]: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+    [unichain.id]: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
   },
 } as const;
 
-// Token addresses on Base mainnet
+// Token addresses on Unichain mainnet
 // These are the tokens players can catch/swap
 export const TOKENS = {
   // Stablecoins
   USDC: {
-    address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const,
+    address: '0x078d782b760474a361dda0af3839290b0ef57ad6' as const,
     decimals: 6,
     symbol: 'USDC',
     name: 'USD Coin',
   },
   DAI: {
-    address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb' as const,
+    address: '0x20cab320a855b39f724131c69424240519573f81' as const,
     decimals: 18,
     symbol: 'DAI',
     name: 'Dai Stablecoin',
   },
-  // Wrapped ETH
+  USDT: {
+    address: '0x9151434b16b9763660705744891fa906f660ecc5' as const,
+    decimals: 6,
+    symbol: 'USDT',
+    name: 'Tether USD',
+  },
+  // Wrapped Assets
   WETH: {
     address: '0x4200000000000000000000000000000000000006' as const,
     decimals: 18,
     symbol: 'WETH',
     name: 'Wrapped Ether',
   },
+  WBTC: {
+    address: '0x927B51f251480a681271180DA4de28D44EC4AfB8' as const,
+    decimals: 8,
+    symbol: 'WBTC',
+    name: 'Wrapped Bitcoin',
+  },
   // DeFi Tokens
-  AERO: {
-    address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631' as const,
+  UNI: {
+    address: '0x8f187aA05619a017077f5308904739877ce9eA21' as const,
     decimals: 18,
-    symbol: 'AERO',
-    name: 'Aerodrome',
+    symbol: 'UNI',
+    name: 'Uniswap',
   },
-  // Meme Tokens
-  BRETT: {
-    address: '0x532f27101965dd16442E59d40670FaF5eBB142E4' as const,
+  USDS: {
+    address: '0x7E10036Acc4B56d4dFCa3b77810356CE52313F9C' as const,
     decimals: 18,
-    symbol: 'BRETT',
-    name: 'Brett',
-  },
-  DEGEN: {
-    address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed' as const,
-    decimals: 18,
-    symbol: 'DEGEN',
-    name: 'Degen',
-  },
-  TOSHI: {
-    address: '0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4' as const,
-    decimals: 18,
-    symbol: 'TOSHI',
-    name: 'Toshi',
+    symbol: 'USDS',
+    name: 'USDS Stablecoin',
   },
 } as const;
 

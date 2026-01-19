@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import { fetchTokenPrice } from '@/lib/services/priceService';
 import { TOKENS } from '@/lib/web3/config';
 
-// Wild token encounters - Base mainnet tokens available for real swaps
+// Wild token encounters - Unichain tokens available for real swaps
 // These match the tokens in lib/web3/config.ts with real contract addresses
-const BASE_TOKENS = [
-  // Common - Stablecoins and wrapped assets (most liquid)
+const UNICHAIN_TOKENS = [
+  // Common - Stablecoins (most liquid)
   {
     ...TOKENS.USDC,
     volume24h: 100000000,
@@ -19,56 +19,56 @@ const BASE_TOKENS = [
     priceSymbol: 'dai',
   },
   {
+    ...TOKENS.USDT,
+    volume24h: 85000000,
+    rarity: 'common',
+    priceSymbol: 'tether',
+  },
+
+  // Uncommon - Wrapped assets
+  {
     ...TOKENS.WETH,
     volume24h: 80000000,
-    rarity: 'common',
+    rarity: 'uncommon',
     priceSymbol: 'weth',
   },
-
-  // Uncommon - Base ecosystem token
   {
-    ...TOKENS.AERO,
-    volume24h: 40000000,
+    ...TOKENS.WBTC,
+    volume24h: 50000000,
     rarity: 'uncommon',
-    priceSymbol: 'aerodrome-finance',
+    priceSymbol: 'wrapped-bitcoin',
   },
 
-  // Rare - Meme tokens on Base
+  // Rare - DeFi tokens
   {
-    ...TOKENS.BRETT,
-    volume24h: 20000000,
+    ...TOKENS.UNI,
+    volume24h: 40000000,
     rarity: 'rare',
-    priceSymbol: 'based-brett',
-  },
-  {
-    ...TOKENS.DEGEN,
-    volume24h: 15000000,
-    rarity: 'rare',
-    priceSymbol: 'degen-base',
+    priceSymbol: 'uniswap',
   },
 
-  // Legendary - Rare Base meme
+  // Legendary - Exotic stablecoins
   {
-    ...TOKENS.TOSHI,
-    volume24h: 5000000,
+    ...TOKENS.USDS,
+    volume24h: 10000000,
     rarity: 'legendary',
-    priceSymbol: 'toshi',
+    priceSymbol: 'usds',
   },
 ];
 
 // Volume-weighted random token selection
 function selectRandomToken() {
-  const totalVolume = BASE_TOKENS.reduce((sum, token) => sum + token.volume24h, 0);
+  const totalVolume = UNICHAIN_TOKENS.reduce((sum, token) => sum + token.volume24h, 0);
   let random = Math.random() * totalVolume;
 
-  for (const token of BASE_TOKENS) {
+  for (const token of UNICHAIN_TOKENS) {
     random -= token.volume24h;
     if (random <= 0) {
       return token;
     }
   }
 
-  return BASE_TOKENS[0]; // Fallback
+  return UNICHAIN_TOKENS[0]; // Fallback
 }
 
 export async function GET() {
