@@ -2,6 +2,7 @@
 
 import { GameBoyShell } from '@/components/game/GameBoyShell';
 import { PhaserGame } from '@/components/game/PhaserGame';
+import { SwapBridge } from '@/components/game/SwapBridge';
 
 /**
  * Test-only game page that bypasses wallet connection requirement.
@@ -11,10 +12,13 @@ import { PhaserGame } from '@/components/game/PhaserGame';
  */
 export default function GameTestPage() {
   return (
-    <GameBoyShell>
-      <div className="w-full h-full relative bg-[#0f380f]">
-        <PhaserGame />
-      </div>
-    </GameBoyShell>
+    <>
+      <SwapBridge />
+      <GameBoyShell>
+        <div className="w-full h-full relative bg-[#0f380f]">
+          <PhaserGame />
+        </div>
+      </GameBoyShell>
+    </>
   );
 }

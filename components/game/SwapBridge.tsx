@@ -30,20 +30,27 @@ export function SwapBridge() {
           usdcAmount: string
         ): Promise<{ success: boolean; txHash?: string; error?: string }> => {
           try {
+            console.log('[SwapBridge] catchToken called:', { tokenAddress, tokenDecimals, usdcAmount });
             reset();
+
+            console.log('[SwapBridge] Calling hook catchToken...');
             const txHash = await catchToken({
               tokenAddress: tokenAddress as Address,
               tokenDecimals,
               usdcAmount,
             });
 
+            console.log('[SwapBridge] Hook returned txHash:', txHash);
+
             if (txHash) {
               return { success: true, txHash };
             } else {
-              return { success: false, error: state.error || 'Swap failed' };
+              const errorMsg = state.error || 'Swap failed';
+              console.error('[SwapBridge] Swap failed:', errorMsg);
+              return { success: false, error: errorMsg };
             }
           } catch (error) {
-            console.error('SwapBridge catchToken error:', error);
+            console.error('[SwapBridge] catchToken error:', error);
             return {
               success: false,
               error: error instanceof Error ? error.message : 'Unknown error',

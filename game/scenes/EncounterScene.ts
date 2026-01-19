@@ -196,6 +196,8 @@ export class EncounterScene extends Phaser.Scene {
     }
 
     try {
+      console.log('[EncounterScene] Starting swap execution for', tokenSymbol);
+
       // Get token info from GAME_CONFIG
       const gameConfig = await import('@/lib/web3/config').then((m) => m.GAME_CONFIG);
       const usdcAmount = gameConfig.POKEBALL_COST_USDC; // 1 USDC per pokeball
@@ -205,7 +207,10 @@ export class EncounterScene extends Phaser.Scene {
         return m.getTokenInfo(tokenAddress || '');
       });
 
+      console.log('[EncounterScene] Token info:', tokenInfo);
+
       if (!tokenInfo || !tokenAddress) {
+        console.error('[EncounterScene] Token not found:', tokenAddress);
         this.encounterText?.setText('Token not found!');
         this.time.delayedCall(1500, () => {
           this.returnToOverworld();
@@ -214,10 +219,21 @@ export class EncounterScene extends Phaser.Scene {
       }
 
       // Update UI for swap steps
-      this.encounterText?.setText('Approving USDC...');
+      this.encounterText?.setText('Swapping USDC...');
 
-      // Execute the swap
-      const result = await swapBridge.catchToken(tokenAddress, tokenInfo.decimals, usdcAmount);
+      console.log('[EncounterScene] Calling swapBridge.catchToken...');
+
+      // Execute the swap with timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Swap timeout - took too long')), 120000); // 2 min timeout
+      });
+
+      const result = await Promise.race([
+        swapBridge.catchToken(tokenAddress, tokenInfo.decimals, usdcAmount),
+        timeoutPromise,
+      ]);
+
+      console.log('[EncounterScene] Swap result:', result);
 
       if (result.success) {
         this.encounterText?.setText(`${tokenSymbol} caught!`);
