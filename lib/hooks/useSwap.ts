@@ -6,8 +6,8 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { useAccount, useChainId, usePublicClient, useWalletClient, useReconnect } from 'wagmi';
-import { Address, parseUnits, formatUnits } from 'viem';
+import { useAccount, useChainId, usePublicClient, useConnectorClient, useReconnect } from 'wagmi';
+import { Address, parseUnits, formatUnits, walletActions } from 'viem';
 import {
   checkApproval,
   getQuote,
@@ -54,17 +54,20 @@ export function useSwap(): UseSwapReturn {
   const { address, chain: connectedChain, connector } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient({ chainId });
+  const { data: connectorClient } = useConnectorClient({ chainId });
   const { reconnect } = useReconnect();
 
-  // Auto-reconnect if wallet is connected but walletClient is missing
+  // Extend connector client with wallet actions
+  const walletClient = connectorClient ? connectorClient.extend(walletActions) : null;
+
+  // Auto-reconnect if wallet is connected but connectorClient is missing
   useEffect(() => {
-    if (address && !walletClient && connector) {
-      console.log('[useSwap] Wallet connected but walletClient missing - reconnecting...');
+    if (address && !connectorClient && connector) {
+      console.log('[useSwap] Wallet connected but connectorClient missing - reconnecting...');
       // Trigger reconnect without parameters - it will use the current connector
       reconnect();
     }
-  }, [address, walletClient, connector, reconnect]);
+  }, [address, connectorClient, connector, reconnect]);
 
   // Debug: log when walletClient changes
   useEffect(() => {
