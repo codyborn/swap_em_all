@@ -12,21 +12,13 @@
 
 import { Address } from 'viem';
 
-const TRADING_API_BASE = 'https://trade.api.uniswap.org/v1';
-
-// Get API key from environment
-const getApiKey = () => {
-  const key = process.env.NEXT_PUBLIC_UNISWAP_API_KEY;
-  if (!key) {
-    console.warn('NEXT_PUBLIC_UNISWAP_API_KEY not set - swap functionality will be limited');
-  }
-  return key || '';
-};
+// Use our Next.js API routes instead of calling Uniswap directly
+// This avoids CORS issues and keeps the API key server-side
+const API_BASE = '/api/swap';
 
 // Common headers for API requests
 const getHeaders = () => ({
   'Content-Type': 'application/json',
-  'x-api-key': getApiKey(),
 });
 
 // ============================================================================
@@ -110,7 +102,7 @@ export interface SwapError {
 export async function checkApproval(
   params: ApprovalRequest
 ): Promise<ApprovalResponse> {
-  const response = await fetch(`${TRADING_API_BASE}/check_approval`, {
+  const response = await fetch(`${API_BASE}/approval`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(params),
@@ -128,13 +120,17 @@ export async function checkApproval(
  * Get swap quote with optimal routing
  */
 export async function getQuote(params: QuoteRequest): Promise<QuoteResponse> {
-  const response = await fetch(`${TRADING_API_BASE}/quote`, {
+  const response = await fetch(`${API_BASE}/quote`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
-      ...params,
-      slippageTolerance: params.slippageTolerance ?? 0.5,
-      routingPreference: params.routingPreference ?? 'BEST_PRICE',
+      tokenIn: params.tokenIn,
+      tokenOut: params.tokenOut,
+      amount: params.amount,
+      chainId: params.tokenInChainId,
+      swapper: params.swapper,
+      slippage: params.slippageTolerance ?? 0.5,
+      type: params.type,
     }),
   });
 
@@ -152,7 +148,7 @@ export async function getQuote(params: QuoteRequest): Promise<QuoteResponse> {
 export async function getSwapTransaction(
   params: SwapRequest
 ): Promise<SwapResponse> {
-  const response = await fetch(`${TRADING_API_BASE}/swap`, {
+  const response = await fetch(`${API_BASE}/execute`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(params),
