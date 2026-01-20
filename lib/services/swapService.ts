@@ -152,12 +152,13 @@ export async function getQuote(params: QuoteRequest): Promise<QuoteResponse> {
 }
 
 /**
- * Get executable swap transaction
+ * Get executable swap transaction from Trading API /swap endpoint
+ * This returns a ready-to-sign transaction that should be sent to the wallet
  */
 export async function getSwapTransaction(
   params: SwapRequest
 ): Promise<SwapResponse> {
-  const response = await fetch(`${API_BASE}/execute`, {
+  const response = await fetch(`${API_BASE}/swap`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(params),

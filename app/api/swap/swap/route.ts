@@ -59,9 +59,10 @@ export async function POST(request: Request) {
     const swapDeadline = deadline || Math.floor(Date.now() / 1000) + 1200;
 
     // Log the request for debugging
-    console.log('[swap/execute] Calling Uniswap API with:', {
-      quote,
-      signature: signature ? `${signature.substring(0, 20)}...` : 'none',
+    console.log('[swap/swap] Calling Uniswap /swap endpoint with:', {
+      quoteRequestId: quote.requestId,
+      routing: quote.routing,
+      hasSignature: !!signature,
       deadline: swapDeadline,
     });
 
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('[swap/execute] Uniswap API error response:', {
+      console.error('[swap/swap] Uniswap /swap API error:', {
         status: response.status,
         errorData,
       });
