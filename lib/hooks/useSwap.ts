@@ -192,6 +192,8 @@ export function useSwap(): UseSwapReturn {
           const approvalFeeData = await publicClient.estimateFeesPerGas();
 
           const approvalTxParams = {
+            account: address,
+            chain: connectedChain,
             to: approvalTx.to as Address,
             data: approvalTx.data as `0x${string}`,
             value: BigInt(approvalTx.value),
@@ -249,6 +251,8 @@ export function useSwap(): UseSwapReturn {
         console.log('[useSwap] Fee data from chain:', feeData);
 
         const swapTxParams = {
+          account: address,
+          chain: connectedChain,
           to: swapTx.to as Address,
           data: swapTx.data as `0x${string}`,
           value: BigInt(swapTx.value),
@@ -261,6 +265,9 @@ export function useSwap(): UseSwapReturn {
 
         console.log('[useSwap] Sending swap transaction to wallet:', swapTxParams);
         console.log('[useSwap] Transaction breakdown:', {
+          account: swapTxParams.account,
+          chainId: swapTxParams.chain?.id,
+          chainName: swapTxParams.chain?.name,
           to: swapTxParams.to,
           data: swapTxParams.data.substring(0, 66) + '...',
           value: swapTxParams.value.toString(),
