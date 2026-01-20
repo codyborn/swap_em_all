@@ -102,10 +102,9 @@ export async function POST(request: Request) {
 
     const quoteData = await response.json();
 
-    return NextResponse.json({
-      ...quoteData,
-      timestamp: Date.now(),
-    });
+    // Return quote data as-is from Uniswap API
+    // Don't add extra fields as they'll cause validation errors in /swap
+    return NextResponse.json(quoteData);
   } catch (error) {
     console.error('Error generating swap quote:', error);
     return NextResponse.json(
