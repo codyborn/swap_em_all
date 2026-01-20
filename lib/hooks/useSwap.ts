@@ -263,14 +263,21 @@ export function useSwap(): UseSwapReturn {
 
         const deadline = Math.floor(Date.now() / 1000) + 1200; // 20 minutes
 
-        const swapResult = await getSwapTransaction({
-          quote: {
-            ...quote.quote,
-            routing: quote.routing,
-          },
+        const swapPayload = {
+          quote, // Pass the full quote response from /quote
           signature: permitSignature,
           deadline,
+        };
+
+        console.log('[useSwap] Requesting swap transaction with payload:', {
+          quoteRouting: quote.routing,
+          quoteInput: quote.quote.input,
+          quoteOutput: quote.quote.output,
+          signature: permitSignature ? `${permitSignature.substring(0, 20)}...` : 'none',
+          deadline,
         });
+
+        const swapResult = await getSwapTransaction(swapPayload);
 
         // Step 5: Execute swap transaction
         // Pass the swap object directly as returned by Trading API

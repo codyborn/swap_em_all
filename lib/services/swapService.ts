@@ -78,7 +78,7 @@ export interface QuoteResponse {
 }
 
 export interface SwapRequest {
-  quote: QuoteResponse['quote'] & { routing?: string };
+  quote: QuoteResponse; // Full quote response from /quote endpoint
   signature?: string;
   deadline: number;
 }

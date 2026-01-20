@@ -8,12 +8,16 @@ const getApiKey = () => {
 
 interface SwapExecuteRequest {
   quote: {
-    input: { token: string; amount: string };
-    output: { token: string; amount: string };
-    slippage: number;
-    route: unknown[];
-    gasFee: string;
-    routing?: string;
+    routing: string;
+    quote: {
+      input: { token: string; amount: string };
+      output: { token: string; amount: string };
+      slippage: number;
+      route: unknown[];
+      gasFee: string;
+    };
+    permitData?: unknown;
+    requestId?: string;
   };
   signature?: string;
   deadline?: number;
@@ -54,6 +58,13 @@ export async function POST(request: Request) {
     // Use provided deadline or default to 20 minutes from now
     const swapDeadline = deadline || Math.floor(Date.now() / 1000) + 1200;
 
+    // Log the request for debugging
+    console.log('[swap/execute] Calling Uniswap API with:', {
+      quote,
+      signature: signature ? `${signature.substring(0, 20)}...` : 'none',
+      deadline: swapDeadline,
+    });
+
     // Call Uniswap Trading API
     const response = await fetch(`${TRADING_API_BASE}/swap`, {
       method: 'POST',
@@ -70,7 +81,10 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('Uniswap API error:', errorData);
+      console.error('[swap/execute] Uniswap API error response:', {
+        status: response.status,
+        errorData,
+      });
 
       // Return user-friendly error messages
       if (response.status === 400 && errorData.error?.includes('expired')) {
