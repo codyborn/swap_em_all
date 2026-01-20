@@ -33,9 +33,12 @@ export async function POST(request: Request) {
     const apiKey = getApiKey();
 
     // If no API key, return mock quote for development
+    // IMPORTANT: Response structure must match exactly what Uniswap Trading API returns
+    // Any extra fields will cause validation errors when passed to /swap
     if (!apiKey) {
       console.warn('UNISWAP_API_KEY not set - returning mock quote');
       return NextResponse.json({
+        routing: 'CLASSIC',
         quote: {
           input: { token: tokenIn, amount },
           output: { token: tokenOut, amount: '1000000000000000000' },
@@ -43,10 +46,7 @@ export async function POST(request: Request) {
           route: [],
           gasFee: '150000',
         },
-        routing: 'MOCK',
-        mock: true,
-        timestamp: Date.now(),
-        warning: 'Using mock quote - set UNISWAP_API_KEY for real quotes',
+        requestId: `mock-${Date.now()}`,
       });
     }
 

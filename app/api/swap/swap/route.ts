@@ -39,19 +39,19 @@ export async function POST(request: Request) {
     const apiKey = getApiKey();
 
     // If no API key, return mock transaction
+    // IMPORTANT: Response structure must match exactly what Uniswap Trading API returns
+    // Use Unichain (chainId 130) as default since that's what the app is configured for
     if (!apiKey) {
       console.warn('UNISWAP_API_KEY not set - returning mock swap transaction');
       return NextResponse.json({
         swap: {
-          to: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD', // Universal Router
+          to: '0xef740bf23acae26f6492b10de645d6b98dc8eaf3', // Universal Router on Unichain
           from: '0x0000000000000000000000000000000000000000',
           data: '0x',
           value: '0',
-          chainId: 8453, // Base
+          chainId: 130, // Unichain
           gasLimit: '250000',
         },
-        mock: true,
-        warning: 'Using mock swap transaction - set UNISWAP_API_KEY for real swaps',
       });
     }
 
@@ -66,6 +66,32 @@ export async function POST(request: Request) {
       deadline: swapDeadline,
     });
 
+    // Extract inner quote and permitData from the QuoteResponse
+    // Uniswap Trading API expects: { quote: innerQuote, permitData, signature, deadline }
+    // But we receive: { routing, quote: innerQuote, permitData, requestId }
+    const swapPayload: {
+      quote: unknown;
+      permitData?: unknown;
+      signature?: string;
+      deadline: number;
+    } = {
+      quote: quote.quote, // Extract inner quote object
+      signature,
+      deadline: swapDeadline,
+    };
+
+    // Include permitData at top level if present
+    if (quote.permitData) {
+      swapPayload.permitData = quote.permitData;
+    }
+
+    console.log('[swap/swap] Sending payload to Uniswap:', {
+      hasQuote: !!swapPayload.quote,
+      hasPermitData: !!swapPayload.permitData,
+      hasSignature: !!swapPayload.signature,
+      deadline: swapPayload.deadline,
+    });
+
     // Call Uniswap Trading API
     const response = await fetch(`${TRADING_API_BASE}/swap`, {
       method: 'POST',
@@ -73,18 +99,21 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
       },
-      body: JSON.stringify({
-        quote,
-        signature,
-        deadline: swapDeadline,
-      }),
+      body: JSON.stringify(swapPayload),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       console.error('[swap/swap] Uniswap /swap API error:', {
         status: response.status,
+        statusText: response.statusText,
         errorData,
+        sentPayload: {
+          hasQuote: !!swapPayload.quote,
+          hasPermitData: !!swapPayload.permitData,
+          hasSignature: !!swapPayload.signature,
+          deadline: swapPayload.deadline,
+        },
       });
 
       // Return user-friendly error messages
@@ -96,7 +125,10 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json(
-        { error: errorData.message || errorData.error || 'Failed to generate swap transaction' },
+        {
+          error: errorData.message || errorData.error || errorData.errorCode || 'Failed to generate swap transaction',
+          details: errorData,
+        },
         { status: response.status }
       );
     }

@@ -29,12 +29,11 @@ export async function POST(request: Request) {
     const apiKey = getApiKey();
 
     // If no API key, return mock response (no approval needed)
+    // IMPORTANT: Response structure must match exactly what Uniswap Trading API returns
     if (!apiKey) {
       console.warn('UNISWAP_API_KEY not set - returning mock approval check');
       return NextResponse.json({
         approval: null, // Assume already approved for mock
-        mock: true,
-        warning: 'Using mock approval check - set UNISWAP_API_KEY for real checks',
       });
     }
 
