@@ -226,7 +226,31 @@ export function useSwap(): UseSwapReturn {
         const amountOut = formatUnits(BigInt(quote.quote.output.amount), params.decimalsOut);
         setState((s) => ({ ...s, quote, amountOut }));
 
-        // Step 4: Get swap transaction
+        // Step 4: Sign permit if needed (Permit2)
+        let permitSignature: string | undefined;
+        if (quote.permitData) {
+          console.log('[useSwap] Permit data received, requesting signature...', quote.permitData);
+
+          try {
+            // Sign the permit message using EIP-712
+            permitSignature = await walletClient.signTypedData({
+              account: address,
+              domain: quote.permitData.domain,
+              types: quote.permitData.types,
+              primaryType: quote.permitData.primaryType || 'PermitTransferFrom',
+              message: quote.permitData.values,
+            });
+
+            console.log('[useSwap] Permit signature obtained:', permitSignature);
+          } catch (error) {
+            console.error('[useSwap] Failed to sign permit:', error);
+            throw new Error('Failed to sign permit message');
+          }
+        } else {
+          console.log('[useSwap] No permit data in quote, skipping permit signature');
+        }
+
+        // Step 5: Get swap transaction
         setState((s) => ({ ...s, status: 'swapping' }));
 
         const deadline = Math.floor(Date.now() / 1000) + 1200; // 20 minutes
@@ -236,6 +260,7 @@ export function useSwap(): UseSwapReturn {
             ...quote.quote,
             routing: quote.routing,
           },
+          signature: permitSignature,
           deadline,
         });
 

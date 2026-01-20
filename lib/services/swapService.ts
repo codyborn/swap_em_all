@@ -64,7 +64,16 @@ export interface QuoteResponse {
     route: unknown[];
     gasFee: string;
   };
-  permitData?: unknown;
+  permitData?: {
+    domain: {
+      name: string;
+      chainId: number;
+      verifyingContract: Address;
+    };
+    types: Record<string, unknown>;
+    values: Record<string, unknown>;
+    primaryType?: string;
+  };
   requestId?: string;
 }
 
