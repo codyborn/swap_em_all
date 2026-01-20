@@ -232,12 +232,20 @@ export function useSwap(): UseSwapReturn {
           console.log('[useSwap] Permit data received, requesting signature...', quote.permitData);
 
           try {
+            // Determine primary type from the types object
+            // Exclude 'EIP712Domain' as it's not the primary type
+            const typeKeys = Object.keys(quote.permitData.types).filter(key => key !== 'EIP712Domain');
+            const primaryType = quote.permitData.primaryType || typeKeys[0];
+
+            console.log('[useSwap] Using primary type:', primaryType);
+            console.log('[useSwap] Available types:', typeKeys);
+
             // Sign the permit message using EIP-712
             permitSignature = await walletClient.signTypedData({
               account: address,
               domain: quote.permitData.domain,
               types: quote.permitData.types,
-              primaryType: quote.permitData.primaryType || 'PermitTransferFrom',
+              primaryType,
               message: quote.permitData.values,
             });
 
