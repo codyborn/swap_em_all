@@ -108,6 +108,9 @@ export abstract class BaseMapScene extends Phaser.Scene {
   }
 
   protected onSceneResume() {
+    // Re-enable input system when scene resumes
+    this.input.enabled = true;
+
     // Reset keyboard input state when scene resumes
     // This prevents keys held during pause from continuing to register
     if (this.input.keyboard) {
