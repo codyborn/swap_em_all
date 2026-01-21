@@ -331,8 +331,8 @@ Generates a ready-to-sign swap transaction.
 ## Environment Variables
 
 ```bash
-# Database
-DATABASE_URL="file:./dev.db"
+# Database (PostgreSQL - auto-set by Vercel Postgres)
+DATABASE_URL="postgresql://user:password@host:5432/database"
 
 # Uniswap Trading API
 UNISWAP_API_KEY="your-api-key"
@@ -387,26 +387,22 @@ curl http://localhost:3000/api/cron/update-prices
 
 ## Production Deployment
 
-### Vercel Deployment
+**See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete step-by-step deployment guide.**
+
+### Quick Start
 
 1. Push to GitHub
-2. Connect repository to Vercel
-3. Add environment variables in Vercel dashboard:
-   - `DATABASE_URL`
+2. Import repository to Vercel
+3. Create Vercel Postgres database in Storage tab
+4. Add environment variables:
+   - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
    - `UNISWAP_API_KEY`
    - `CRON_SECRET`
-   - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
-4. Deploy
+   - `DATABASE_URL` (auto-set by Vercel Postgres)
+5. Run migrations: `npx prisma migrate deploy`
+6. Seed database: `npx tsx scripts/seed.ts`
 
 The cron job will automatically run every minute via Vercel Cron.
-
-### Database Migration
-
-For production, consider using PostgreSQL instead of SQLite:
-
-1. Update `DATABASE_URL` to PostgreSQL connection string
-2. Update `prisma/schema.prisma` provider to `postgresql`
-3. Run `npx prisma migrate deploy`
 
 ---
 
