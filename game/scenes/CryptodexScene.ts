@@ -331,7 +331,7 @@ export class CryptodexScene extends Phaser.Scene {
 
     this.contentText = this.add.text(
       8,
-      32,
+      76,
       lines.join('\n'),
       {
         fontFamily: 'monospace',
@@ -409,7 +409,7 @@ export class CryptodexScene extends Phaser.Scene {
         if (line[j] === '█') {
           const price = dataToShow[j].price;
           const isAbovePurchase = price >= token.purchasePrice;
-          const color = isAbovePurchase ? '#0f8' : '#f44';
+          const color = isAbovePurchase ? '#9bbc0f' : '#f44';
 
           const char = this.add.text(currentX, startY + (i * 5), '█', {
             fontFamily: 'monospace',
@@ -425,7 +425,7 @@ export class CryptodexScene extends Phaser.Scene {
     // Add price change indicator below chart
     const priceChange = ((token.currentPrice - token.purchasePrice) / token.purchasePrice * 100).toFixed(1);
     const priceChangeSign = parseFloat(priceChange) >= 0 ? '+' : '';
-    const changeColor = parseFloat(priceChange) >= 0 ? '#0f8' : '#f44';
+    const changeColor = parseFloat(priceChange) >= 0 ? '#9bbc0f' : '#f44';
 
     const chartLabel = this.add.text(
       4,
