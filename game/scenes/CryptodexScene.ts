@@ -264,6 +264,9 @@ export class CryptodexScene extends Phaser.Scene {
       this.titleText.setText(`${token.symbol} - ${token.name}`);
     }
 
+    // Add price chart at the top left
+    this.renderPriceChart(token);
+
     // Add animated token sprite
     const spriteKey = `token-${token.type}`;
     this.tokenSprite = this.add.sprite(this.cameras.main.width - 24, 40, spriteKey);
@@ -344,6 +347,98 @@ export class CryptodexScene extends Phaser.Scene {
     }
   }
 
+
+  private renderPriceChart(token: CaughtToken) {
+    // Get price history since token was caught
+    const historySinceCaught = token.priceHistory.filter(
+      point => point.timestamp >= token.caughtAt
+    );
+
+    if (historySinceCaught.length === 0) {
+      return; // No history to display
+    }
+
+    // Chart dimensions
+    const chartWidth = 28;
+    const chartHeight = 7;
+
+    // Sample data points to fit chart width
+    const sampleInterval = Math.max(1, Math.floor(historySinceCaught.length / chartWidth));
+    const sampledData = historySinceCaught.filter((_, i) => i % sampleInterval === 0);
+
+    // Take only what fits
+    const dataToShow = sampledData.slice(-chartWidth);
+
+    // Find min/max for normalization
+    const prices = dataToShow.map(p => p.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice || 1; // Avoid division by zero
+
+    // Normalize prices to chart height (0 to chartHeight-1)
+    const normalizedHeights = dataToShow.map(point => {
+      const normalized = (point.price - minPrice) / priceRange;
+      return Math.floor(normalized * (chartHeight - 1));
+    });
+
+    // Build chart from top to bottom
+    const lines: string[] = [];
+    for (let row = chartHeight - 1; row >= 0; row--) {
+      let line = '';
+      for (let col = 0; col < dataToShow.length; col++) {
+        const height = normalizedHeights[col];
+        const price = dataToShow[col].price;
+        const isAbovePurchase = price >= token.purchasePrice;
+
+        if (height >= row) {
+          // Use colored block character
+          line += isAbovePurchase ? '█' : '█';
+        } else {
+          line += ' ';
+        }
+      }
+      lines.push(line);
+    }
+
+    // Create text objects for each line with appropriate colors
+    const startY = 28;
+    lines.forEach((line, i) => {
+      // Split line into segments by color
+      let currentX = 4;
+      for (let j = 0; j < line.length; j++) {
+        if (line[j] === '█') {
+          const price = dataToShow[j].price;
+          const isAbovePurchase = price >= token.purchasePrice;
+          const color = isAbovePurchase ? '#0f8' : '#f44';
+
+          const char = this.add.text(currentX, startY + (i * 5), '█', {
+            fontFamily: 'monospace',
+            fontSize: '6px',
+            color: color,
+          });
+          this.listSprites.push(char as any);
+        }
+        currentX += 3.5; // Character width spacing
+      }
+    });
+
+    // Add price change indicator below chart
+    const priceChange = ((token.currentPrice - token.purchasePrice) / token.purchasePrice * 100).toFixed(1);
+    const priceChangeSign = parseFloat(priceChange) >= 0 ? '+' : '';
+    const changeColor = parseFloat(priceChange) >= 0 ? '#0f8' : '#f44';
+
+    const chartLabel = this.add.text(
+      4,
+      startY + (chartHeight * 5) + 2,
+      `${priceChangeSign}${priceChange}%`,
+      {
+        fontFamily: 'monospace',
+        fontSize: '7px',
+        color: changeColor,
+      }
+    );
+    this.listSprites.push(chartLabel as any);
+  }
 
   private getHealthBar(current: number, max: number): string {
     if (current === 0) return '[----]';
