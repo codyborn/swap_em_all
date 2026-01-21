@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { SpriteGenerator } from '../utils/SpriteGenerator';
+import '../systems/PriceTracker'; // Auto-starts price tracking
 
 export class BootScene extends Phaser.Scene {
   private loadingText?: Phaser.GameObjects.Text;
