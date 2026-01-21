@@ -287,12 +287,12 @@ export abstract class BaseMapScene extends Phaser.Scene {
     // Menu shortcuts
     this.input.keyboard?.on('keydown-C', () => {
       this.scene.pause();
-      this.scene.launch('CryptodexScene');
+      this.scene.launch('CryptodexScene', { callingScene: this.scene.key });
     });
 
     this.input.keyboard?.on('keydown-B', () => {
       this.scene.pause();
-      this.scene.launch('BagScene');
+      this.scene.launch('BagScene', { callingScene: this.scene.key });
     });
 
     // Debug: Force encounter

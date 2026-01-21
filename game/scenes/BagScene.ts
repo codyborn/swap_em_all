@@ -7,6 +7,10 @@ interface ItemInfo {
   effect: string;
 }
 
+interface BagSceneData {
+  callingScene?: string;
+}
+
 export class BagScene extends Phaser.Scene {
   private menuText?: Phaser.GameObjects.Text;
   private selectedOption = 0;
@@ -16,12 +20,17 @@ export class BagScene extends Phaser.Scene {
   private availableItems: Array<{ type: string; name: string; count: number; desc: string }> = [];
   private prevMenuText?: Phaser.GameObjects.Text;
   private nextMenuText?: Phaser.GameObjects.Text;
+  private callingScene: string = 'OverworldScene'; // Default for backwards compatibility
 
   constructor() {
     super('BagScene');
   }
 
-  create() {
+  create(data: BagSceneData = {}) {
+    // Track which scene launched us
+    if (data.callingScene) {
+      this.callingScene = data.callingScene;
+    }
     const centerX = this.cameras.main.centerX;
     const centerY = this.cameras.main.centerY;
 
@@ -352,7 +361,7 @@ export class BagScene extends Phaser.Scene {
 
     // Stop this scene and launch badges
     this.scene.stop();
-    this.scene.launch('BadgesScene');
+    this.scene.launch('BadgesScene', { callingScene: this.callingScene });
   }
 
   private switchToCryptodex() {
@@ -369,7 +378,7 @@ export class BagScene extends Phaser.Scene {
 
     // Stop this scene and launch cryptodex
     this.scene.stop();
-    this.scene.launch('CryptodexScene');
+    this.scene.launch('CryptodexScene', { callingScene: this.callingScene });
   }
 
   private exitBag() {
@@ -386,7 +395,7 @@ export class BagScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-RIGHT');
 
       this.scene.stop();
-      this.scene.resume('OverworldScene');
+      this.scene.resume(this.callingScene);
     });
   }
 }

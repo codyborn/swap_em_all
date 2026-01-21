@@ -124,13 +124,13 @@ export class OverworldScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-C', () => {
       // Open Cryptodex
       this.scene.pause();
-      this.scene.launch('CryptodexScene');
+      this.scene.launch('CryptodexScene', { callingScene: this.scene.key });
     });
 
     this.input.keyboard?.on('keydown-B', () => {
       // Open Bag
       this.scene.pause();
-      this.scene.launch('BagScene');
+      this.scene.launch('BagScene', { callingScene: this.scene.key });
     });
 
     // Handle scene resume

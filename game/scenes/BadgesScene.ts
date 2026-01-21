@@ -1,16 +1,25 @@
 import * as Phaser from 'phaser';
 import { Badge } from '@/lib/types/battle';
 
+interface BadgesSceneData {
+  callingScene?: string;
+}
+
 export class BadgesScene extends Phaser.Scene {
   private menuText?: Phaser.GameObjects.Text;
   private prevMenuText?: Phaser.GameObjects.Text;
   private nextMenuText?: Phaser.GameObjects.Text;
+  private callingScene: string = 'OverworldScene'; // Default for backwards compatibility
 
   constructor() {
     super('BadgesScene');
   }
 
-  create() {
+  create(data: BadgesSceneData = {}) {
+    // Track which scene launched us
+    if (data.callingScene) {
+      this.callingScene = data.callingScene;
+    }
     const centerX = this.cameras.main.centerX;
 
     // Background
@@ -139,7 +148,7 @@ export class BadgesScene extends Phaser.Scene {
 
     // Stop this scene and launch inventory
     this.scene.stop();
-    this.scene.launch('BagScene');
+    this.scene.launch('BagScene', { callingScene: this.callingScene });
   }
 
   private switchToCryptodex() {
@@ -150,7 +159,7 @@ export class BadgesScene extends Phaser.Scene {
 
     // Stop this scene and launch cryptodex
     this.scene.stop();
-    this.scene.launch('CryptodexScene');
+    this.scene.launch('CryptodexScene', { callingScene: this.callingScene });
   }
 
   private exitBadges() {
@@ -163,7 +172,7 @@ export class BadgesScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-ESC');
 
       this.scene.stop();
-      this.scene.resume('OverworldScene');
+      this.scene.resume(this.callingScene);
     });
   }
 

@@ -5,11 +5,16 @@ import { DamageCalculator } from '../../lib/utils/damageCalculator';
 
 type ViewMode = 'list' | 'detail';
 
+interface CryptodexSceneData {
+  callingScene?: string;
+}
+
 export class CryptodexScene extends Phaser.Scene {
   private viewMode: ViewMode = 'list';
   private selectedTokenIndex: number = 0;
   private listScrollOffset: number = 0;
   private maxVisibleTokens: number = 8;
+  private callingScene: string = 'OverworldScene'; // Default for backwards compatibility
 
   // UI elements
   private container?: Phaser.GameObjects.Container;
@@ -25,7 +30,11 @@ export class CryptodexScene extends Phaser.Scene {
     super('CryptodexScene');
   }
 
-  create() {
+  create(data: CryptodexSceneData = {}) {
+    // Track which scene launched us
+    if (data.callingScene) {
+      this.callingScene = data.callingScene;
+    }
     // Background
     this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x0f380f)
       .setOrigin(0);
@@ -384,7 +393,7 @@ export class CryptodexScene extends Phaser.Scene {
 
     // Stop this scene and launch bag
     this.scene.stop();
-    this.scene.launch('BagScene');
+    this.scene.launch('BagScene', { callingScene: this.callingScene });
   }
 
   private exitCryptodex() {
@@ -400,7 +409,7 @@ export class CryptodexScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-RIGHT');
 
       this.scene.stop();
-      this.scene.resume('OverworldScene');
+      this.scene.resume(this.callingScene);
     });
   }
 
