@@ -19,6 +19,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic';
+
 const TRADING_API_BASE = 'https://trade.api.uniswap.org/v1';
 const USDC_ADDRESS = '0x078d782b760474a361dda0af3839290b0ef57ad6';
 const CHAIN_ID = 130; // Unichain

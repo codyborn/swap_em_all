@@ -16,6 +16,9 @@ import { createPublicClient, http, parseAbi } from 'viem';
 import { unichain } from 'viem/chains';
 import { prisma } from '@/lib/db/prisma';
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic';
+
 const publicClient = createPublicClient({
   chain: unichain,
   transport: http(),
