@@ -8,6 +8,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 
+// CORS headers for cross-origin requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+// Handle preflight OPTIONS request
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 interface TokenStat {
   captureId: string;
   token: {
@@ -33,7 +45,7 @@ export async function GET(request: Request) {
     if (!address) {
       return NextResponse.json(
         { error: 'Missing required parameter: address' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -63,7 +75,7 @@ export async function GET(request: Request) {
         totalValue: '0',
         totalProfitLoss: '0',
         captures: [],
-      });
+      }, { headers: corsHeaders });
     }
 
     // Calculate stats for each capture
@@ -119,12 +131,12 @@ export async function GET(request: Request) {
       totalProfitLossPercent:
         totalPurchaseValue > 0 ? ((totalProfitLoss / totalPurchaseValue) * 100).toFixed(2) : '0',
       captures: stats,
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('[Stats] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch stats' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

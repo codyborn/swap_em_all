@@ -34,6 +34,18 @@ interface CaptureRequest {
   usdcSpent: string; // Amount of USDC spent (should be ~1 USDC)
 }
 
+// CORS headers for cross-origin requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+// Handle preflight OPTIONS request
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(request: Request) {
   try {
     const body: CaptureRequest = await request.json();
@@ -43,7 +55,7 @@ export async function POST(request: Request) {
     if (!txHash || !walletAddress || !tokenAddress || !expectedAmount || !usdcSpent) {
       return NextResponse.json(
         { error: 'Missing required fields: txHash, walletAddress, tokenAddress, expectedAmount, usdcSpent' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -57,7 +69,7 @@ export async function POST(request: Request) {
     if (existing) {
       return NextResponse.json(
         { error: 'Transaction already registered', capture: existing },
-        { status: 409 }
+        { status: 409, headers: corsHeaders }
       );
     }
 
@@ -67,14 +79,14 @@ export async function POST(request: Request) {
     if (!receipt) {
       return NextResponse.json(
         { error: 'Transaction not found or not yet mined' },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
     if (receipt.status !== 'success') {
       return NextResponse.json(
         { error: 'Transaction failed on-chain' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -84,7 +96,7 @@ export async function POST(request: Request) {
     if (tx.from.toLowerCase() !== walletAddress.toLowerCase()) {
       return NextResponse.json(
         { error: 'Transaction sender does not match wallet address' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -99,7 +111,7 @@ export async function POST(request: Request) {
     if (usdcTransfers.length === 0) {
       return NextResponse.json(
         { error: 'No USDC transfer found in transaction' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -159,12 +171,12 @@ export async function POST(request: Request) {
         purchasePrice: capture.purchasePrice,
         capturedAt: capture.capturedAt,
       },
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('[Capture] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to register capture' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
