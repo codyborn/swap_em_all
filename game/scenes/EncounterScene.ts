@@ -242,6 +242,8 @@ export class EncounterScene extends Phaser.Scene {
         const gameStore = (window as any).gameStore;
         if (gameStore) {
           const currentPrice = this.currentToken?.tokenPrice || 100;
+          const state = gameStore.getState();
+          const walletAddress = state.walletAddress;
 
           gameStore.getState().catchToken({
             symbol: tokenSymbol || 'UNKNOWN',
@@ -260,6 +262,31 @@ export class EncounterScene extends Phaser.Scene {
             experience: 0,
             moves: [],
           });
+
+          // Register capture in database
+          if (result.txHash && walletAddress) {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            const expectedAmount = '1000000000000000000'; // TODO: Get from swap quote
+
+            fetch(`${apiUrl}/api/game/capture`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                txHash: result.txHash,
+                walletAddress,
+                tokenAddress,
+                expectedAmount,
+                usdcSpent: (parseFloat(usdcAmount) * 1_000_000).toString(), // Convert to USDC decimals
+              }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                console.log('[EncounterScene] Capture registered:', data);
+              })
+              .catch((error) => {
+                console.error('[EncounterScene] Failed to register capture:', error);
+              });
+          }
         }
 
         // Flash effect
