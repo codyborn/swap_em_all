@@ -1,284 +1,431 @@
-# Swap 'Em All Backend API Documentation
+# Swap 'Em All API Documentation
 
-The backend API provides server-side functionality for tracking token captures, price updates, and user statistics.
+Complete reference for all API endpoints in the Swap 'Em All application.
 
-## Base URL
-
-```
-Development: http://localhost:3000/api
-Production: https://your-domain.vercel.app/api
-```
-
-## Authentication
-
-All game API endpoints are currently open (no authentication required). In production, you should add wallet signature verification for write operations.
+**Base URL**: `https://swap-em-all.vercel.app`
 
 ---
 
-## Endpoints
+## Table of Contents
 
-### 1. Register Token Capture
+- [Token Endpoints](#token-endpoints)
+  - [GET /api/tokens](#get-apitokens)
+  - [GET /api/tokens/encounter](#get-apitokensencounter)
+  - [POST /api/tokens/prices](#post-apitokensprices)
+  - [GET /api/tokens/prices](#get-apitokensprices)
+- [Game Endpoints](#game-endpoints)
+  - [POST /api/game/capture](#post-apigamecapture)
+  - [GET /api/game/stats](#get-apigamestats)
+- [Swap Endpoints](#swap-endpoints)
+  - [POST /api/swap/approval](#post-apiswapapproval)
+  - [POST /api/swap/quote](#post-apiswapquote)
+  - [POST /api/swap/swap](#post-apiswapswap)
+- [Cron Endpoints](#cron-endpoints)
+  - [POST /api/cron/update-prices](#post-apicronupdate-prices)
 
-**POST** `/game/capture`
+---
 
-Registers a successful token capture after verifying the on-chain transaction.
+## Token Endpoints
 
-#### Request Body
+### GET /api/tokens
+
+Returns a list of available tokens with game metadata.
+
+**Response:**
 
 ```json
 {
-  "txHash": "0x...",
-  "walletAddress": "0x...",
-  "tokenAddress": "0x...",
+  "tokens": [
+    {
+      "address": "0x4200000000000000000000000000000000000006",
+      "symbol": "WETH",
+      "name": "Wrapped Ether",
+      "decimals": 18,
+      "volume24h": 50000000,
+      "rarity": "uncommon",
+      "creatureName": "Etheron",
+      "encounterProbability": 0.18,
+      "spriteUrl": "/assets/sprites/tokens/weth.png"
+    }
+  ],
+  "totalVolume": 278000000,
+  "timestamp": 1704067200000
+}
+```
+
+**Rarity Levels:**
+- `common` - Stablecoins (USDC, DAI, USDbC)
+- `uncommon` - Wrapped assets (WETH, cbETH)
+- `rare` - Memecoins (PEPE, DEGEN, TOSHI)
+- `legendary` - Rare tokens (BRETT, MFER)
+
+---
+
+### GET /api/tokens/encounter
+
+Generates a random token encounter using volume-weighted selection.
+
+**Response:**
+
+```json
+{
+  "token": {
+    "symbol": "WETH",
+    "name": "Wrapped Ether",
+    "address": "0x4200000000000000000000000000000000000006",
+    "decimals": 18,
+    "rarity": "uncommon",
+    "price": 2450.00,
+    "spriteUrl": "/assets/sprites/tokens/weth.png",
+    "encounterText": "A wild Wrapped Ether appeared!"
+  },
+  "timestamp": 1704067200000
+}
+```
+
+**Price Source:** Real-time prices from CoinGecko API
+
+---
+
+### POST /api/tokens/prices
+
+Batch fetch current prices for multiple tokens.
+
+**Request:**
+
+```json
+{
+  "addresses": ["WETH", "USDC", "DAI"]
+}
+```
+
+**Note:** Addresses can be:
+- Symbol only: `"WETH"`
+- Symbol with address: `"WETH:0x4200000000000000000000000000000000000006"`
+
+**Response:**
+
+```json
+{
+  "WETH": 2450.00,
+  "USDC": 1.00,
+  "DAI": 0.99
+}
+```
+
+**Error Responses:**
+
+| Status | Error |
+|--------|-------|
+| 400 | `Invalid addresses array` |
+| 500 | `Failed to fetch token prices` |
+
+---
+
+### GET /api/tokens/prices
+
+Get prices for multiple tokens via query parameters.
+
+**Query Parameters:**
+- `addresses` - Comma-separated list of token symbols or addresses
+
+**Example:**
+```
+GET /api/tokens/prices?addresses=WETH,USDC,DAI
+```
+
+**Response:**
+```json
+{
+  "WETH": 2450.00,
+  "USDC": 1.00,
+  "DAI": 0.99
+}
+```
+
+---
+
+## Game Endpoints
+
+### POST /api/game/capture
+
+Register a successful token capture after on-chain transaction.
+
+**Authentication:** None (public endpoint)
+
+**Request:**
+
+```json
+{
+  "txHash": "0x123...",
+  "walletAddress": "0xabc...",
+  "tokenAddress": "0x4200000000000000000000000000000000000006",
   "expectedAmount": "1000000000000000000",
   "usdcSpent": "1000000"
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `txHash` | string | Transaction hash to verify |
-| `walletAddress` | string | User's wallet address |
-| `tokenAddress` | string | Token contract address |
-| `expectedAmount` | string | Amount of token received (wei) |
-| `usdcSpent` | string | Amount of USDC spent (smallest unit, 6 decimals) |
+**Validation:**
+- Verifies transaction exists and succeeded on-chain
+- Confirms transaction sender matches `walletAddress`
+- Validates USDC was spent in transaction
+- Prevents duplicate captures
 
-#### Response
+**Response:**
 
 ```json
 {
   "success": true,
   "capture": {
-    "id": "clxxx...",
+    "id": "clx123abc",
     "token": {
-      "address": "0x...",
+      "address": "0x4200000000000000000000000000000000000006",
       "symbol": "WETH",
       "name": "Wrapped Ether"
     },
     "amountCaptured": "1000000000000000000",
-    "purchasePrice": "1.000000",
-    "capturedAt": "2026-01-21T00:00:00.000Z"
+    "purchasePrice": "2450.123456",
+    "capturedAt": "2024-01-20T15:30:00.000Z"
   }
 }
 ```
 
-#### Error Responses
+**Error Responses:**
 
-- `400` - Invalid parameters or failed transaction
-- `404` - Transaction not found
-- `409` - Transaction already registered
-- `500` - Server error
+| Status | Error |
+|--------|-------|
+| 400 | Missing required fields |
+| 400 | Transaction failed on-chain |
+| 400 | Transaction sender mismatch |
+| 400 | No USDC transfer found |
+| 404 | Transaction not found or not mined |
+| 409 | Transaction already registered |
+| 500 | Server error |
 
 ---
 
-### 2. Get User Stats
+### GET /api/game/stats
 
-**GET** `/game/stats?address=0x...`
+Get user's captured tokens with current stats and price history.
 
-Returns user's captured tokens with current stats (purchase price, current price, profit/loss).
+**Query Parameters:**
+- `address` (required) - User's wallet address
 
-#### Query Parameters
+**Example:**
+```
+GET /api/game/stats?address=0xabc123...
+```
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `address` | string | Yes | User's wallet address |
-
-#### Response
+**Response:**
 
 ```json
 {
   "totalCaptures": 5,
-  "totalValue": "5.234567",
-  "totalProfitLoss": "0.234567",
-  "totalProfitLossPercent": "4.69",
+  "totalValue": "12450.123456",
+  "totalProfitLoss": "2450.123456",
+  "totalProfitLossPercent": "24.50",
   "captures": [
     {
-      "captureId": "clxxx...",
+      "captureId": "clx123abc",
       "token": {
-        "address": "0x...",
+        "address": "0x4200000000000000000000000000000000000006",
         "symbol": "WETH",
         "name": "Wrapped Ether",
         "decimals": 18
       },
       "amountCaptured": "1000000000000000000",
-      "purchasePrice": "1.000000",
-      "currentPrice": "1.050000",
-      "profitLoss": "0.050000",
-      "profitLossPercent": "5.00",
-      "capturedAt": "2026-01-21T00:00:00.000Z"
+      "purchasePrice": "2000.000000",
+      "currentPrice": "2450.123456",
+      "profitLoss": "+450.123456",
+      "profitLossPercent": "+22.51",
+      "capturedAt": "2024-01-20T15:30:00.000Z",
+      "priceHistory": [
+        { "price": 2000.00, "timestamp": 1704067200000 },
+        { "price": 2100.00, "timestamp": 1704067260000 },
+        { "price": 2450.12, "timestamp": 1704067320000 }
+      ]
     }
   ]
 }
 ```
+
+**Price History:**
+- Returns last 100 price points since token was captured
+- Filtered to only include prices after `capturedAt` timestamp
+- Ordered oldest to newest (chronological)
+
+**Empty Response (no captures):**
+
+```json
+{
+  "totalCaptures": 0,
+  "totalValue": "0",
+  "totalProfitLoss": "0",
+  "captures": []
+}
+```
+
+**Error Responses:**
+
+| Status | Error |
+|--------|-------|
+| 400 | `Missing required parameter: address` |
+| 500 | `Failed to fetch stats` |
 
 ---
 
-### 3. Update Token Prices (Cron)
+## Swap Endpoints
 
-**POST** `/cron/update-prices`
+### POST /api/swap/approval
 
-Updates prices for all tokens by fetching quotes from the Trading API. This endpoint should be called by a cron service.
+Check if token approval is needed for swap.
 
-#### Headers
-
-```
-Authorization: Bearer <CRON_SECRET>
-```
-
-Required in production to prevent unauthorized access.
-
-#### Response
+**Request:**
 
 ```json
 {
-  "success": true,
-  "updated": 5,
-  "failed": 1,
-  "results": [
-    {
-      "token": "WETH",
-      "success": true
-    },
-    {
-      "token": "USDS",
-      "success": false,
-      "error": "No quotes available"
-    }
-  ]
-}
-```
-
-#### Configuration
-
-For Vercel deployments, the cron job is configured in `vercel.json`:
-
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/update-prices",
-      "schedule": "* * * * *"
-    }
-  ]
-}
-```
-
-This runs every minute. Set `CRON_SECRET` in environment variables for production.
-
----
-
-## Trading API Proxy Endpoints
-
-These endpoints wrap the Uniswap Trading API to keep API keys server-side.
-
-### 4. Check Token Approval
-
-**POST** `/swap/approval`
-
-Checks if a token needs approval before swapping.
-
-#### Request Body
-
-```json
-{
-  "walletAddress": "0x...",
-  "token": "0x...",
-  "amount": "1000000",
+  "walletAddress": "0xabc...",
+  "token": "0x4200000000000000000000000000000000000006",
+  "amount": "1000000000000000000",
   "chainId": 130
 }
 ```
 
-#### Response
+**Response (approval needed):**
 
 ```json
 {
   "approval": {
-    "to": "0x...",
-    "from": "0x...",
-    "data": "0x...",
+    "to": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    "from": "0xabc...",
+    "data": "0x095ea7b3...",
     "value": "0",
     "chainId": 130
   }
 }
 ```
 
-If `approval` is `null`, the token is already approved.
-
----
-
-### 5. Get Swap Quote
-
-**POST** `/swap/quote`
-
-Gets an optimal swap quote with routing.
-
-#### Request Body
+**Response (already approved):**
 
 ```json
 {
-  "swapper": "0x...",
-  "tokenIn": "0x...",
-  "tokenOut": "0x...",
-  "amount": "1000000",
-  "chainId": 130,
-  "type": "EXACT_INPUT",
-  "slippage": 0.5
+  "approval": null
 }
 ```
 
-#### Response
+**Error Responses:**
+
+| Status | Error |
+|--------|-------|
+| 400 | Missing required parameters |
+| 500 | Failed to check approval |
+
+**Mock Mode:** If `UNISWAP_API_KEY` is not set, returns mock response (assumes approved).
+
+---
+
+### POST /api/swap/quote
+
+Get swap quote from Uniswap Trading API.
+
+**Request:**
+
+```json
+{
+  "tokenIn": "0x078d782b760474a361dda0af3839290b0ef57ad6",
+  "tokenOut": "0x4200000000000000000000000000000000000006",
+  "amount": "1000000",
+  "chainId": 130,
+  "swapper": "0xabc...",
+  "slippage": 0.5,
+  "type": "EXACT_INPUT"
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| tokenIn | string | Yes | - | Input token address |
+| tokenOut | string | Yes | - | Output token address |
+| amount | string | Yes | - | Amount in token decimals |
+| chainId | number | Yes | - | Chain ID (130 = Unichain) |
+| swapper | string | Yes | - | User's wallet address |
+| slippage | number | No | 0.5 | Slippage tolerance (0-100) |
+| type | string | No | EXACT_INPUT | EXACT_INPUT or EXACT_OUTPUT |
+
+**Response:**
 
 ```json
 {
   "routing": "CLASSIC",
   "quote": {
     "input": {
-      "token": "0x...",
+      "token": "0x078d782b760474a361dda0af3839290b0ef57ad6",
       "amount": "1000000"
     },
     "output": {
-      "token": "0x...",
-      "amount": "1000000000000000000"
+      "token": "0x4200000000000000000000000000000000000006",
+      "amount": "408163265306122"
     },
     "slippage": 0.5,
     "route": [...],
     "gasFee": "150000"
   },
   "permitData": {...},
-  "requestId": "..."
+  "requestId": "req_123abc"
 }
 ```
 
+**Error Responses:**
+
+| Status | Error |
+|--------|-------|
+| 400 | Missing required parameters |
+| 401 | Invalid API key |
+| 404 | No route found for token pair |
+| 429 | Rate limit exceeded |
+| 500 | Failed to generate quote |
+
+**Mock Mode:** If `UNISWAP_API_KEY` is not set, returns mock quote.
+
 ---
 
-### 6. Execute Swap
+### POST /api/swap/swap
 
-**POST** `/swap/swap`
+Get executable swap transaction from Uniswap Trading API.
 
-Generates a ready-to-sign swap transaction.
-
-#### Request Body
+**Request:**
 
 ```json
 {
   "quote": {
     "routing": "CLASSIC",
     "quote": {...},
-    "permitData": {...}
+    "permitData": {...},
+    "requestId": "req_123abc"
   },
-  "signature": "0x...",
-  "deadline": 1768915864
+  "signature": "0x123...",
+  "deadline": 1704068400
 }
 ```
 
-#### Response
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| quote | object | Yes | Full quote response from /quote endpoint |
+| signature | string | No | Permit2 signature (if using Permit2) |
+| deadline | number | No | Unix timestamp (default: 20 min from now) |
+
+**Response:**
 
 ```json
 {
   "swap": {
-    "to": "0x...",
-    "from": "0x...",
-    "data": "0x...",
+    "to": "0xef740bf23acae26f6492b10de645d6b98dc8eaf3",
+    "from": "0xabc...",
+    "data": "0x3593564c...",
     "value": "0",
     "chainId": 130,
     "gasLimit": "250000"
@@ -286,190 +433,223 @@ Generates a ready-to-sign swap transaction.
 }
 ```
 
+**Transaction Execution:**
+
+```typescript
+// Sign and send transaction using wagmi/viem
+const hash = await walletClient.sendTransaction({
+  to: swap.to,
+  from: swap.from,
+  data: swap.data,
+  value: BigInt(swap.value),
+  gas: BigInt(swap.gasLimit)
+});
+```
+
+**Error Responses:**
+
+| Status | Error |
+|--------|-------|
+| 400 | Missing required parameter: quote |
+| 400 | Quote has expired |
+| 500 | Failed to generate swap transaction |
+
+**Mock Mode:** If `UNISWAP_API_KEY` is not set, returns mock transaction.
+
 ---
 
-## Database Schema
+## Cron Endpoints
 
-### Tables
+### POST /api/cron/update-prices
 
-#### User
-- `id`: Primary key
-- `address`: Wallet address (unique, indexed)
-- `createdAt`: Registration timestamp
-- `updatedAt`: Last update timestamp
+Updates token prices in database from Uniswap Trading API.
 
-#### Token
-- `id`: Primary key
-- `address`: Contract address (unique, indexed)
-- `symbol`: Token symbol (e.g., "WETH")
-- `name`: Token name (e.g., "Wrapped Ether")
-- `decimals`: Token decimals
-- `chainId`: Chain ID (indexed)
-- `createdAt`: Creation timestamp
+**Authentication:** Required
+- Header: `Authorization: Bearer <CRON_SECRET>`
+- Only required in production
+- Vercel automatically adds this header for configured cron jobs
 
-#### TokenCapture
-- `id`: Primary key
-- `userId`: Foreign key to User
-- `tokenId`: Foreign key to Token
-- `txHash`: Transaction hash (unique, indexed)
-- `purchasePrice`: Price in USD at time of capture
-- `amountCaptured`: Amount of token captured
-- `usdcSpent`: Amount of USDC spent
-- `verified`: Verification status
-- `verifiedAt`: Verification timestamp
-- `capturedAt`: Capture timestamp (indexed)
+**Cron Schedule:** Every minute (`* * * * *`)
 
-#### TokenPrice
-- `id`: Primary key
-- `tokenId`: Foreign key to Token
-- `price`: Price in USD
-- `source`: Price source (e.g., "trading-api")
-- `timestamp`: Price timestamp (indexed)
+**Configuration:**
+```json
+// vercel.json
+{
+  "crons": [{
+    "path": "/api/cron/update-prices",
+    "schedule": "* * * * *"
+  }]
+}
+```
+
+**Process:**
+1. Fetch all tokens from database (excluding USDC)
+2. Get quote for 1 USDC → Token for each token
+3. Calculate price from quote output amount
+4. Store price in `TokenPrice` table
+5. Add 100ms delay between requests to avoid rate limiting
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "updated": 7,
+  "failed": 0,
+  "results": [
+    { "token": "WETH", "success": true },
+    { "token": "WBTC", "success": true },
+    { "token": "UNI", "success": false, "error": "No route found" }
+  ]
+}
+```
+
+**Error Responses:**
+
+| Status | Error |
+|--------|-------|
+| 401 | Unauthorized (invalid CRON_SECRET) |
+| 500 | No API key configured |
+| 500 | Failed to update prices |
+
+**Manual Testing (Development Only):**
+
+```bash
+# GET method allowed in development
+curl http://localhost:3000/api/cron/update-prices
+```
+
+---
+
+## Common Response Codes
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 400 | Bad Request - Invalid parameters |
+| 401 | Unauthorized - Invalid or missing auth |
+| 404 | Not Found - Resource doesn't exist |
+| 409 | Conflict - Resource already exists |
+| 429 | Too Many Requests - Rate limited |
+| 500 | Internal Server Error |
+
+---
+
+## Rate Limits
+
+**Uniswap Trading API:**
+- Rate limits enforced by Uniswap
+- Returns 429 status when exceeded
+- Recommended: Implement client-side retry with exponential backoff
+
+**CoinGecko API (Price Service):**
+- Free tier: 10-30 calls/minute
+- Used by `/tokens/encounter` and `/tokens/prices`
 
 ---
 
 ## Environment Variables
 
-```bash
-# Database (PostgreSQL - auto-set by Vercel Postgres)
-DATABASE_URL="postgresql://user:password@host:5432/database"
+Required environment variables for API functionality:
 
+```bash
 # Uniswap Trading API
-UNISWAP_API_KEY="your-api-key"
+UNISWAP_API_KEY=your_api_key_here
 
-# Cron Security
-CRON_SECRET="your-secret-for-cron-endpoints"
+# Database (Prisma)
+DATABASE_URL=postgresql://...
 
-# WalletConnect
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID="your-project-id"
+# Cron Authentication
+CRON_SECRET=your_secret_here
+
+# Optional: CoinGecko Pro API
+COINGECKO_API_KEY=your_key_here
 ```
 
 ---
 
-## Setup Instructions
+## Error Handling Best Practices
 
-### 1. Install Dependencies
-
-```bash
-npm install
-```
-
-### 2. Set Up Database
-
-```bash
-# Generate Prisma client
-npx prisma generate
-
-# Run migrations
-npx prisma migrate dev
-
-# Seed initial tokens
-npx tsx scripts/seed.ts
-```
-
-### 3. Configure Environment Variables
-
-Copy `.env.local.example` to `.env.local` and fill in the values.
-
-### 4. Run Development Server
-
-```bash
-npm run dev
-```
-
-### 5. Test Cron Job (Development)
-
-```bash
-curl http://localhost:3000/api/cron/update-prices
-```
-
----
-
-## Production Deployment
-
-**See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete step-by-step deployment guide.**
-
-### Quick Start
-
-1. Push to GitHub
-2. Import repository to Vercel
-3. Create Vercel Postgres database in Storage tab
-4. Add environment variables:
-   - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
-   - `UNISWAP_API_KEY`
-   - `CRON_SECRET`
-   - `DATABASE_URL` (auto-set by Vercel Postgres)
-5. Run migrations: `npx prisma migrate deploy`
-6. Seed database: `npx tsx scripts/seed.ts`
-
-The cron job will automatically run every minute via Vercel Cron.
-
----
-
-## Security Considerations
-
-1. **Transaction Verification**: Always verify transactions on-chain before registering captures
-2. **Cron Authentication**: Use `CRON_SECRET` to protect cron endpoints in production
-3. **Rate Limiting**: Implement rate limiting for public endpoints
-4. **Wallet Signature Verification**: Add signature verification for write operations
-5. **Input Validation**: Validate all inputs to prevent injection attacks
-
----
-
-## Rate Limiting
-
-The price update cron includes a 100ms delay between API calls to avoid rate limiting:
+### Client-Side
 
 ```typescript
-await new Promise((resolve) => setTimeout(resolve, 100));
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options);
+
+      if (response.ok) {
+        return await response.json();
+      }
+
+      // Don't retry client errors (4xx)
+      if (response.status >= 400 && response.status < 500) {
+        throw new Error(await response.text());
+      }
+
+      // Retry server errors (5xx)
+      if (i < retries - 1) {
+        await new Promise(resolve =>
+          setTimeout(resolve, 1000 * Math.pow(2, i))
+        );
+        continue;
+      }
+    } catch (error) {
+      if (i === retries - 1) throw error;
+    }
+  }
+}
 ```
 
-Adjust this delay if you experience rate limiting issues.
+### Handle Rate Limits
+
+```typescript
+if (error.status === 429) {
+  // Wait and retry
+  await new Promise(resolve => setTimeout(resolve, 60000));
+  return retry();
+}
+```
 
 ---
 
-## Testing
+## Database Schema
 
-Run the test suite:
+### User
+- `id` - UUID
+- `address` - Wallet address (unique)
+- `createdAt` - Timestamp
 
-```bash
-npm test
-```
+### Token
+- `id` - UUID
+- `address` - Token address (unique per chain)
+- `symbol` - Token symbol
+- `name` - Token name
+- `decimals` - Token decimals
+- `chainId` - Chain ID
 
-Test specific endpoints:
+### TokenPrice
+- `id` - UUID
+- `tokenId` - Foreign key to Token
+- `price` - Price in USD (decimal string)
+- `timestamp` - Price timestamp
+- `source` - Price source (e.g., "trading-api")
 
-```bash
-# Test price updates
-curl http://localhost:3000/api/cron/update-prices
-
-# Test stats endpoint
-curl "http://localhost:3000/api/game/stats?address=0x24EcD23096fCF03A15ee8a6FE63F24345Cc4BA46"
-```
+### TokenCapture
+- `id` - UUID
+- `userId` - Foreign key to User
+- `tokenId` - Foreign key to Token
+- `txHash` - Transaction hash (unique)
+- `purchasePrice` - Purchase price in USD
+- `amountCaptured` - Token amount captured
+- `usdcSpent` - USDC spent
+- `verified` - Transaction verified
+- `capturedAt` - Capture timestamp
 
 ---
 
-## Troubleshooting
+## Support
 
-### Database Connection Issues
-
-If you get Prisma connection errors:
-
-```bash
-npx prisma generate
-npx prisma migrate dev
-```
-
-### Missing Prices
-
-If tokens show no prices:
-
-1. Check that the cron job is running
-2. Verify `UNISWAP_API_KEY` is set
-3. Check logs for API errors
-
-### Transaction Verification Failures
-
-Common issues:
-- Transaction not yet mined (wait and retry)
-- Transaction failed on-chain (check block explorer)
-- Wrong wallet address (verify sender matches)
+For questions or issues with the API:
+- GitHub Issues: https://github.com/codyborn/swap_em_all/issues
+- Documentation: https://github.com/codyborn/swap_em_all/blob/main/docs/API.md
