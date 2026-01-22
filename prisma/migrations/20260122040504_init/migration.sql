@@ -1,46 +1,51 @@
 -- CreateTable
 CREATE TABLE "User" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "address" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Token" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "address" TEXT NOT NULL,
     "symbol" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "decimals" INTEGER NOT NULL,
     "chainId" INTEGER NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Token_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "TokenCapture" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "tokenId" TEXT NOT NULL,
     "txHash" TEXT NOT NULL,
     "purchasePrice" TEXT NOT NULL,
     "amountCaptured" TEXT NOT NULL,
     "usdcSpent" TEXT NOT NULL,
-    "capturedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "capturedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "verified" BOOLEAN NOT NULL DEFAULT false,
-    "verifiedAt" DATETIME,
-    CONSTRAINT "TokenCapture_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "TokenCapture_tokenId_fkey" FOREIGN KEY ("tokenId") REFERENCES "Token" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "verifiedAt" TIMESTAMP(3),
+
+    CONSTRAINT "TokenCapture_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "TokenPrice" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "tokenId" TEXT NOT NULL,
     "price" TEXT NOT NULL,
     "source" TEXT NOT NULL,
-    "timestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "TokenPrice_tokenId_fkey" FOREIGN KEY ("tokenId") REFERENCES "Token" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "TokenPrice_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -81,3 +86,12 @@ CREATE INDEX "TokenPrice_timestamp_idx" ON "TokenPrice"("timestamp");
 
 -- CreateIndex
 CREATE INDEX "TokenPrice_tokenId_timestamp_idx" ON "TokenPrice"("tokenId", "timestamp");
+
+-- AddForeignKey
+ALTER TABLE "TokenCapture" ADD CONSTRAINT "TokenCapture_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TokenCapture" ADD CONSTRAINT "TokenCapture_tokenId_fkey" FOREIGN KEY ("tokenId") REFERENCES "Token"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TokenPrice" ADD CONSTRAINT "TokenPrice_tokenId_fkey" FOREIGN KEY ("tokenId") REFERENCES "Token"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
