@@ -22,6 +22,7 @@ interface TokenStat {
   profitLoss: string; // Difference in USD
   profitLossPercent: string; // Percentage change
   capturedAt: string;
+  priceHistory: Array<{ price: number; timestamp: number }>; // Price history since capture
 }
 
 export async function GET(request: Request) {
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
               include: {
                 prices: {
                   orderBy: { timestamp: 'desc' },
-                  take: 1, // Get latest price
+                  take: 100, // Get last 100 price points for history
                 },
               },
             },
@@ -78,6 +79,16 @@ export async function GET(request: Request) {
       const profitLossPercent =
         purchasePriceNum > 0 ? ((profitLoss / purchasePriceNum) * 100).toFixed(2) : '0';
 
+      // Filter price history to only include prices since token was captured
+      const capturedAtTimestamp = capture.capturedAt.getTime();
+      const priceHistory = capture.token.prices
+        .filter((p) => p.timestamp.getTime() >= capturedAtTimestamp)
+        .reverse() // Oldest first
+        .map((p) => ({
+          price: parseFloat(p.price),
+          timestamp: p.timestamp.getTime(),
+        }));
+
       return {
         captureId: capture.id,
         token: {
@@ -92,6 +103,7 @@ export async function GET(request: Request) {
         profitLoss: profitLoss.toFixed(6),
         profitLossPercent: profitLossPercent,
         capturedAt: capture.capturedAt.toISOString(),
+        priceHistory: priceHistory,
       };
     });
 

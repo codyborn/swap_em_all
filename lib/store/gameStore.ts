@@ -17,6 +17,7 @@ export interface TokenCreature {
 
 export interface GameState {
   // Player state
+  walletAddress: string | null;
   pokeballs: number;
   usdc: number; // Track USDC balance (simulated for now)
 
@@ -46,6 +47,7 @@ export interface GameState {
   priceUpdateInterval: number;
 
   // Actions - Existing
+  setWalletAddress: (address: string | null) => void;
   addPokeballs: (count: number) => void;
   usePokeball: () => boolean;
   catchToken: (token: Omit<CaughtToken, 'level' | 'health' | 'stats'> | TokenCreature) => void;
@@ -78,6 +80,7 @@ export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
       // Initial state
+      walletAddress: null,
       pokeballs: 5,  // Start with 5
       usdc: 1000,    // Start with 1000 USDC
       inventory: [],
@@ -97,6 +100,9 @@ export const useGameStore = create<GameState>()(
       priceUpdateInterval: 300000, // 5 minutes
 
       // Existing actions
+      setWalletAddress: (address: string | null) =>
+        set({ walletAddress: address }),
+
       addPokeballs: (count: number) =>
         set((state) => ({ pokeballs: state.pokeballs + count })),
 

@@ -59,7 +59,7 @@ export class PriceTracker {
   }
 
   /**
-   * Update prices for all tokens in inventory
+   * Update prices for all tokens in inventory from database
    */
   private async updatePrices() {
     const store = (window as any).gameStore;
@@ -68,36 +68,44 @@ export class PriceTracker {
       return;
     }
 
-    const inventory: CaughtToken[] = store.getState().inventory;
+    const state = store.getState();
+    const inventory: CaughtToken[] = state.inventory;
+    const walletAddress = state.walletAddress;
+
+    if (!walletAddress) {
+      console.log('No wallet connected, skipping price update');
+      return;
+    }
 
     if (!inventory || inventory.length === 0) {
       console.log('No tokens to update');
       return;
     }
 
-    const addresses = inventory.map((token) => token.address);
-
     try {
-      const response = await fetch('/api/tokens/prices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ addresses }),
-      });
+      // Get API URL from environment or use relative path
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+
+      // Fetch all stats in one request
+      const response = await fetch(`${apiUrl}/api/game/stats?address=${walletAddress}`);
 
       if (!response.ok) {
-        throw new Error(`Price API returned ${response.status}`);
+        console.warn('Failed to get stats:', response.status);
+        return;
       }
 
-      const prices: Record<string, number> = await response.json();
+      const data = await response.json();
 
-      console.log(`Updated prices for ${Object.keys(prices).length} tokens`);
+      // Update each token with data from stats
+      for (const capture of data.captures) {
+        const token = inventory.find((t) => t.address.toLowerCase() === capture.token.address.toLowerCase());
 
-      // Update each token
-      for (const token of inventory) {
-        const newPrice = prices[token.address];
-
-        if (newPrice && newPrice > 0) {
-          this.updateTokenPrice(token, newPrice);
+        if (token && capture.currentPrice && parseFloat(capture.currentPrice) > 0) {
+          this.updateTokenPrice(
+            token,
+            parseFloat(capture.currentPrice),
+            capture.priceHistory
+          );
         }
       }
     } catch (error) {
@@ -108,7 +116,11 @@ export class PriceTracker {
   /**
    * Update a single token's price and handle level-up/damage
    */
-  private updateTokenPrice(token: CaughtToken, newPrice: number) {
+  private updateTokenPrice(
+    token: CaughtToken,
+    newPrice: number,
+    priceHistory?: Array<{ price: number; timestamp: number }>
+  ) {
     const store = (window as any).gameStore;
     if (!store) return;
 
@@ -140,8 +152,51 @@ export class PriceTracker {
       console.log(`💔 ${token.symbol} took ${damage} damage from price drop`);
     }
 
-    // Update via store action
-    store.getState().updateTokenPrice(token.address, newPrice);
+    // Update via store action - use database price history if available
+    if (priceHistory && priceHistory.length > 0) {
+      // Update priceHistory from database
+      const state = store.getState();
+      const tokenIndex = state.inventory.findIndex((t: CaughtToken) => t.address === token.address);
+
+      if (tokenIndex !== -1) {
+        const updatedToken = state.inventory[tokenIndex];
+        const oldLevel = updatedToken.level;
+        const newPeakPrice = Math.max(updatedToken.peakPrice, newPrice);
+        const newMaxGain = LevelingSystem.calculateMaxGain(updatedToken.purchasePrice, newPeakPrice);
+        const newLevel = LevelingSystem.calculateLevel(newMaxGain);
+
+        let updates: Partial<CaughtToken> = {
+          currentPrice: newPrice,
+          peakPrice: newPeakPrice,
+          maxGain: newMaxGain,
+          lastPriceUpdate: Date.now(),
+          priceHistory: priceHistory, // Use database history
+        };
+
+        if (newLevel > oldLevel) {
+          const levelUpData = LevelingSystem.levelUp(updatedToken, newLevel, newMaxGain);
+          updates = { ...updates, ...levelUpData };
+        } else {
+          const statsUpdate = LevelingSystem.updateStatsForPrice(updatedToken, newPrice);
+          updates = { ...updates, ...statsUpdate };
+        }
+
+        // Apply health damage if any
+        if (damage > 0) {
+          const newHealth = Math.max(0, updatedToken.health - damage);
+          updates.health = newHealth;
+          updates.isKnockedOut = newHealth === 0;
+          updates.lastHealthUpdate = Date.now();
+        }
+
+        // Merge updates directly into inventory
+        state.inventory[tokenIndex] = { ...updatedToken, ...updates };
+        store.setState({ inventory: [...state.inventory] });
+      }
+    } else {
+      // Fallback to old behavior if no price history from database
+      store.getState().updateTokenPrice(token.address, newPrice);
+    }
   }
 
   /**

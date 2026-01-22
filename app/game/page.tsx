@@ -6,10 +6,12 @@ import { SwapBridge } from '@/components/game/SwapBridge';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useGameStore } from '@/lib/store/gameStore';
 
 export default function GamePage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const router = useRouter();
+  const setWalletAddress = useGameStore((state) => state.setWalletAddress);
 
   useEffect(() => {
     // Redirect to home if not connected
@@ -17,6 +19,15 @@ export default function GamePage() {
       router.push('/');
     }
   }, [isConnected, router]);
+
+  useEffect(() => {
+    // Update wallet address in game store
+    if (address) {
+      setWalletAddress(address);
+    } else {
+      setWalletAddress(null);
+    }
+  }, [address, setWalletAddress]);
 
   if (!isConnected) {
     return null;
