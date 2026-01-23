@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { CaughtToken } from '../../lib/types/token';
+import { CaughtToken, getTokenType, getBaseStats, DEFAULT_MOVES } from '../../lib/types/token';
 import { Badge } from '../../lib/types/battle';
 import { DamageCalculator } from '../../lib/utils/damageCalculator';
 
@@ -9,12 +9,39 @@ interface CryptodexSceneData {
   callingScene?: string;
 }
 
+interface StatsAPICapture {
+  captureId: string;
+  token: {
+    address: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+  amountCaptured: string;
+  purchasePrice: string;
+  currentPrice: string;
+  profitLoss: string;
+  profitLossPercent: string;
+  capturedAt: string;
+  priceHistory: Array<{ price: number; timestamp: number }>;
+}
+
+interface StatsAPIResponse {
+  totalCaptures: number;
+  totalValue: string;
+  totalProfitLoss: string;
+  totalProfitLossPercent: string;
+  captures: StatsAPICapture[];
+}
+
 export class CryptodexScene extends Phaser.Scene {
   private viewMode: ViewMode = 'list';
   private selectedTokenIndex: number = 0;
   private listScrollOffset: number = 0;
   private maxVisibleTokens: number = 8;
   private callingScene: string = 'OverworldScene'; // Default for backwards compatibility
+  private apiTokens: CaughtToken[] = [];
+  private isLoading: boolean = false;
 
   // UI elements
   private container?: Phaser.GameObjects.Container;
@@ -30,7 +57,7 @@ export class CryptodexScene extends Phaser.Scene {
     super('CryptodexScene');
   }
 
-  create(data: CryptodexSceneData = {}) {
+  async create(data: CryptodexSceneData = {}) {
     // Track which scene launched us
     if (data.callingScene) {
       this.callingScene = data.callingScene;
@@ -92,11 +119,148 @@ export class CryptodexScene extends Phaser.Scene {
       }
     );
 
+    // Fetch tokens from API
+    await this.fetchTokensFromAPI();
+
     // Show initial view
     this.showListView();
 
     // Set up input
     this.setupInput();
+  }
+
+  private async fetchTokensFromAPI() {
+    this.isLoading = true;
+
+    try {
+      // Get wallet address from game store
+      const gameStore = (window as any).gameStore;
+      const walletAddress = gameStore?.getState().walletAddress;
+
+      if (!walletAddress) {
+        console.warn('[Cryptodex] No wallet address found');
+        this.apiTokens = [];
+        return;
+      }
+
+      // Fetch from stats API
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/game/stats?address=${walletAddress}`);
+
+      if (!response.ok) {
+        console.error('[Cryptodex] Failed to fetch stats:', response.statusText);
+        this.apiTokens = [];
+        return;
+      }
+
+      const data: StatsAPIResponse = await response.json();
+
+      // Transform API captures into CaughtToken format
+      this.apiTokens = data.captures.map(capture => this.transformAPIToken(capture));
+
+      console.log(`[Cryptodex] Loaded ${this.apiTokens.length} tokens from API`);
+    } catch (error) {
+      console.error('[Cryptodex] Error fetching tokens:', error);
+      this.apiTokens = [];
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  private transformAPIToken(capture: StatsAPICapture): CaughtToken {
+    const tokenType = getTokenType(capture.token.symbol);
+    const baseStats = getBaseStats(tokenType);
+    const purchasePrice = parseFloat(capture.purchasePrice);
+    const currentPrice = parseFloat(capture.currentPrice);
+    const capturedAt = new Date(capture.capturedAt).getTime();
+
+    // Check if this token exists in local store to preserve game data
+    const gameStore = (window as any).gameStore;
+    const localInventory: CaughtToken[] = gameStore?.getState().inventory || [];
+    const existingToken = localInventory.find(t => t.address.toLowerCase() === capture.token.address.toLowerCase());
+
+    // If token exists locally, merge API data with local game data
+    if (existingToken) {
+      return {
+        ...existingToken,
+        // Update price data from API
+        purchasePrice,
+        currentPrice,
+        peakPrice: Math.max(existingToken.peakPrice, currentPrice),
+        priceHistory: capture.priceHistory,
+        lastPriceUpdate: Date.now(),
+      };
+    }
+
+    // Create new token with defaults
+    const level = 5;
+    const maxHealth = (baseStats.hp || 50) + level * 2;
+
+    return {
+      // Core identity
+      symbol: capture.token.symbol,
+      name: capture.token.name,
+      address: capture.token.address,
+      caughtAt: capturedAt,
+
+      // Price tracking
+      purchasePrice,
+      currentPrice,
+      peakPrice: Math.max(purchasePrice, currentPrice),
+      maxGain: currentPrice > purchasePrice ? (currentPrice - purchasePrice) / purchasePrice : 0,
+      lastPriceUpdate: Date.now(),
+      priceHistory: capture.priceHistory,
+
+      // Leveling
+      level,
+      maxLevel: 100,
+      experience: 0,
+
+      // Health
+      health: maxHealth,
+      maxHealth,
+      isKnockedOut: false,
+      lastHealthUpdate: Date.now(),
+
+      // Battle stats
+      stats: {
+        attack: (baseStats.attack || 10) + level,
+        defense: (baseStats.defense || 10) + level,
+        speed: (baseStats.speed || 10) + level,
+        hp: maxHealth,
+      },
+
+      // Moves
+      moves: DEFAULT_MOVES.filter(m => m.learnedAt <= level),
+
+      // Metadata
+      rarity: this.determineRarity(tokenType),
+      type: tokenType,
+      description: `A ${tokenType} token captured on-chain.`,
+
+      // History
+      levelHistory: [{
+        level,
+        price: purchasePrice,
+        timestamp: capturedAt,
+        event: 'caught',
+      }],
+    };
+  }
+
+  private determineRarity(tokenType: string): 'common' | 'uncommon' | 'rare' | 'legendary' {
+    const rarityMap: Record<string, 'common' | 'uncommon' | 'rare' | 'legendary'> = {
+      layer1: 'rare',
+      defi: 'uncommon',
+      layer2: 'uncommon',
+      meme: 'common',
+      exchange: 'uncommon',
+      governance: 'rare',
+      wrapped: 'uncommon',
+      unknown: 'common',
+    };
+
+    return rarityMap[tokenType] || 'common';
   }
 
   private setupInput() {
@@ -119,11 +283,8 @@ export class CryptodexScene extends Phaser.Scene {
   }
 
   private handleUp() {
-    const store = (window as any).gameStore?.getState();
-    if (!store) return;
-
     if (this.viewMode === 'list') {
-      const inventory = store.inventory || [];
+      const inventory = this.apiTokens;
       if (inventory.length > 0) {
         this.selectedTokenIndex = (this.selectedTokenIndex - 1 + inventory.length) % inventory.length;
         this.showListView();
@@ -132,11 +293,8 @@ export class CryptodexScene extends Phaser.Scene {
   }
 
   private handleDown() {
-    const store = (window as any).gameStore?.getState();
-    if (!store) return;
-
     if (this.viewMode === 'list') {
-      const inventory = store.inventory || [];
+      const inventory = this.apiTokens;
       if (inventory.length > 0) {
         this.selectedTokenIndex = (this.selectedTokenIndex + 1) % inventory.length;
         this.showListView();
@@ -146,8 +304,7 @@ export class CryptodexScene extends Phaser.Scene {
 
   private handleEnter() {
     if (this.viewMode === 'list') {
-      const store = (window as any).gameStore?.getState();
-      const inventory = store?.inventory || [];
+      const inventory = this.apiTokens;
       if (inventory.length > 0) {
         this.showDetailView();
       }
@@ -161,16 +318,14 @@ export class CryptodexScene extends Phaser.Scene {
     this.viewMode = 'list';
     this.clearContent();
 
-    const store = (window as any).gameStore?.getState();
-    const inventory: CaughtToken[] = store?.inventory || [];
-    const cryptodex = store?.cryptodex || new Set();
+    const inventory: CaughtToken[] = this.apiTokens;
 
     if (this.titleText) {
       this.titleText.setText('CRYPTODEX');
     }
 
     // Stats
-    const statsText = `Seen: ${cryptodex.size}  |  Owned: ${inventory.length}`;
+    const statsText = `Captured: ${inventory.length}`;
 
     if (inventory.length === 0) {
       this.contentText = this.add.text(
@@ -254,8 +409,7 @@ export class CryptodexScene extends Phaser.Scene {
     this.viewMode = 'detail';
     this.clearContent();
 
-    const store = (window as any).gameStore?.getState();
-    const inventory: CaughtToken[] = store?.inventory || [];
+    const inventory: CaughtToken[] = this.apiTokens;
     const token = inventory[this.selectedTokenIndex];
 
     if (!token) return;

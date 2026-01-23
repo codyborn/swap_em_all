@@ -138,11 +138,20 @@ export class OverworldScene extends Phaser.Scene {
       // Re-enable input system when scene resumes
       this.input.enabled = true;
 
+      // Ensure dialogue is hidden when resuming
+      this.hideDialogue();
+
       // Reset keyboard input state when scene resumes
       // This prevents keys held during pause from continuing to register
       if (this.input.keyboard) {
         this.input.keyboard.resetKeys();
       }
+    });
+
+    // Handle scene pause
+    this.events.on('pause', () => {
+      // Clean up dialogue state when scene is paused
+      this.hideDialogue();
     });
   }
 
