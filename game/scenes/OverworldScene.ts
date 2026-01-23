@@ -480,11 +480,15 @@ export class OverworldScene extends Phaser.Scene {
       // Show next line
       this.dialogueText?.setText(this.currentDialogue[this.currentDialogueIndex]);
     } else {
-      // Dialogue complete
+      // Dialogue complete - store callback before hiding
+      const callback = this.dialogueCallback;
       this.hideDialogue();
-      if (this.dialogueCallback) {
-        this.dialogueCallback();
-        this.dialogueCallback = undefined;
+
+      // Execute callback after a small delay to ensure dialogue is fully cleaned up
+      if (callback) {
+        this.time.delayedCall(100, () => {
+          callback();
+        });
       }
     }
   }
@@ -493,6 +497,7 @@ export class OverworldScene extends Phaser.Scene {
     this.isShowingDialogue = false;
     this.currentDialogue = [];
     this.currentDialogueIndex = 0;
+    this.dialogueCallback = undefined;
 
     // Hide dialogue UI
     this.dialogueBox?.setVisible(false);

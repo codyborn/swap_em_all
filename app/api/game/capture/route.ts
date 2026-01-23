@@ -24,9 +24,12 @@ const publicClient = createPublicClient({
   transport: http(),
 });
 
-// ERC20 ABI for checking transfer events
+// ERC20 ABI for checking transfer events and reading token metadata
 const ERC20_ABI = parseAbi([
   'event Transfer(address indexed from, address indexed to, uint256 value)',
+  'function symbol() view returns (string)',
+  'function name() view returns (string)',
+  'function decimals() view returns (uint8)',
 ]);
 
 interface CaptureRequest {
@@ -47,6 +50,43 @@ const corsHeaders = {
 // Handle preflight OPTIONS request
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
+}
+
+// Fetch token metadata from blockchain
+async function fetchTokenMetadata(tokenAddress: string) {
+  try {
+    const [symbol, name, decimals] = await Promise.all([
+      publicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'symbol',
+      }),
+      publicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'name',
+      }),
+      publicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'decimals',
+      }),
+    ]);
+
+    return {
+      symbol: symbol as string,
+      name: name as string,
+      decimals: Number(decimals),
+    };
+  } catch (error) {
+    console.error('[Capture] Error fetching token metadata:', error);
+    // Return defaults if fetching fails
+    return {
+      symbol: 'UNKNOWN',
+      name: 'Unknown Token',
+      decimals: 18,
+    };
+  }
 }
 
 export async function POST(request: Request) {
@@ -125,15 +165,23 @@ export async function POST(request: Request) {
       create: { address: walletAddress.toLowerCase() },
     });
 
-    // Get or create token
+    // Fetch token metadata from blockchain
+    const tokenMetadata = await fetchTokenMetadata(tokenAddress);
+
+    // Get or create token with fetched metadata
     const token = await prisma.token.upsert({
       where: { address: tokenAddress.toLowerCase() },
-      update: {},
+      update: {
+        // Update metadata if token already exists
+        symbol: tokenMetadata.symbol,
+        name: tokenMetadata.name,
+        decimals: tokenMetadata.decimals,
+      },
       create: {
         address: tokenAddress.toLowerCase(),
-        symbol: 'UNKNOWN',
-        name: 'Unknown Token',
-        decimals: 18,
+        symbol: tokenMetadata.symbol,
+        name: tokenMetadata.name,
+        decimals: tokenMetadata.decimals,
         chainId: 130,
       },
     });
