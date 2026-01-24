@@ -1,12 +1,43 @@
 import * as Phaser from "phaser";
+import {
+  CaughtToken,
+  getTokenType,
+  getBaseStats,
+  DEFAULT_MOVES,
+} from "../../lib/types/token";
+
+interface StatsAPICapture {
+  captureId: string;
+  token: {
+    address: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+  amountCaptured: string;
+  purchasePrice: string;
+  currentPrice: string;
+  profitLoss: string;
+  profitLossPercent: string;
+  capturedAt: string;
+  priceHistory: Array<{ price: number; timestamp: number }>;
+}
+
+interface StatsAPIResponse {
+  totalCaptures: number;
+  totalValue: string;
+  totalProfitLoss: string;
+  totalProfitLossPercent: string;
+  captures: StatsAPICapture[];
+}
 
 export class TraderScene extends Phaser.Scene {
   private dialogText?: Phaser.GameObjects.Text;
   private menuText?: Phaser.GameObjects.Text;
   private selectedOption = 0;
-  private inventory: any[] = [];
-  private currentState: "menu" | "confirm" = "menu";
-  private tokenToSell?: any;
+  private inventory: CaughtToken[] = [];
+  private currentState: "menu" | "confirm" | "loading" = "loading";
+  private tokenToSell?: CaughtToken;
   private callingScene: string = "OverworldScene"; // Default for backwards compatibility
 
   constructor() {
@@ -47,61 +78,195 @@ export class TraderScene extends Phaser.Scene {
       )
       .setOrigin(0);
 
-    // Load inventory
-    const gameStore = (window as any).gameStore;
-    if (gameStore) {
-      this.inventory = gameStore.getState().inventory;
-    }
+    // Load inventory from stats cache (same as Cryptodex)
+    this.loadInventoryFromCache();
 
-    // Welcome message
-    if (this.inventory.length === 0) {
-      this.dialogText = this.add.text(
-        8,
-        this.cameras.main.height - 45,
-        "You don't have any tokens\nto trade! Come back when\nyou've caught some!",
-        {
-          fontFamily: "monospace",
-          fontSize: "8px",
-          color: "#9bbc0f",
-        },
-      );
-
-      this.time.delayedCall(2500, () => {
-        this.exitTrader();
-      });
-    } else {
-      this.dialogText = this.add.text(
-        8,
-        this.cameras.main.height - 45,
-        "Welcome to the Token Trader!\nI buy tokens for USDC.\nWhich one to sell?",
-        {
-          fontFamily: "monospace",
-          fontSize: "8px",
-          color: "#9bbc0f",
-        },
-      );
-
-      // Menu options (initially hidden)
-      this.menuText = this.add.text(8, this.cameras.main.height - 45, "", {
+    // Show loading message
+    this.dialogText = this.add.text(
+      8,
+      this.cameras.main.height - 45,
+      "Loading tokens...",
+      {
         fontFamily: "monospace",
         fontSize: "8px",
         color: "#9bbc0f",
-      });
+      },
+    );
 
-      // Hide menu initially
-      this.menuText.setVisible(false);
+    // Menu options (initially hidden)
+    this.menuText = this.add.text(8, this.cameras.main.height - 45, "", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#9bbc0f",
+    });
+    this.menuText.setVisible(false);
 
-      this.time.delayedCall(1500, () => {
-        this.showInventoryMenu();
-      });
+    // Set up input
+    this.input.keyboard?.on("keydown-UP", () => this.moveSelection(-1));
+    this.input.keyboard?.on("keydown-DOWN", () => this.moveSelection(1));
+    this.input.keyboard?.on("keydown-ENTER", () => this.confirmSelection());
+    this.input.keyboard?.on("keydown-SPACE", () => this.confirmSelection());
+    this.input.keyboard?.on("keydown-ESC", () => this.handleEscape());
+  }
 
-      // Set up input
-      this.input.keyboard?.on("keydown-UP", () => this.moveSelection(-1));
-      this.input.keyboard?.on("keydown-DOWN", () => this.moveSelection(1));
-      this.input.keyboard?.on("keydown-ENTER", () => this.confirmSelection());
-      this.input.keyboard?.on("keydown-SPACE", () => this.confirmSelection());
-      this.input.keyboard?.on("keydown-ESC", () => this.handleEscape());
+  private async loadInventoryFromCache() {
+    try {
+      // Get game store
+      const gameStore = (window as any).gameStore;
+      if (!gameStore) {
+        console.warn("[TraderScene] Game store not available");
+        this.showNoTokensMessage();
+        return;
+      }
+
+      const state = gameStore.getState();
+      const walletAddress = state.walletAddress;
+
+      if (!walletAddress) {
+        console.warn("[TraderScene] No wallet address found");
+        this.showNoTokensMessage();
+        return;
+      }
+
+      // Check if we have cached stats
+      const cachedData = state.statsCache?.data;
+      const lastFetched = state.statsCache?.lastFetched;
+      const cacheAge = lastFetched ? Date.now() - lastFetched : Infinity;
+      const cacheMaxAge = 5 * 60 * 1000; // 5 minutes
+
+      let data: StatsAPIResponse;
+
+      if (cachedData && cacheAge < cacheMaxAge) {
+        // Use cached data
+        console.log(
+          `[TraderScene] Using cached stats (${Math.floor(cacheAge / 1000)}s old)`,
+        );
+        data = cachedData;
+      } else {
+        // Cache miss or stale, fetch fresh data
+        console.log("[TraderScene] Cache miss or stale, fetching fresh stats");
+        await state.fetchAndCacheStats();
+
+        // Get the newly cached data
+        const updatedState = gameStore.getState();
+        data = updatedState.statsCache?.data;
+
+        if (!data) {
+          console.error("[TraderScene] Failed to fetch stats");
+          this.showNoTokensMessage();
+          return;
+        }
+      }
+
+      // Transform API captures into CaughtToken format
+      this.inventory = data.captures.map((capture) =>
+        this.transformAPIToken(capture),
+      );
+
+      console.log(
+        `[TraderScene] Loaded ${this.inventory.length} tokens from cache`,
+      );
+
+      // Show appropriate UI
+      if (this.inventory.length === 0) {
+        this.showNoTokensMessage();
+      } else {
+        this.showWelcomeMessage();
+      }
+    } catch (error) {
+      console.error("[TraderScene] Error loading tokens:", error);
+      this.showNoTokensMessage();
     }
+  }
+
+  private transformAPIToken(capture: StatsAPICapture): CaughtToken {
+    const tokenType = getTokenType(capture.token.symbol);
+    const baseStats = getBaseStats(tokenType);
+    const purchasePrice = parseFloat(capture.purchasePrice);
+    const currentPrice = parseFloat(capture.currentPrice);
+    const capturedAt = new Date(capture.capturedAt).getTime();
+
+    // Create token with defaults
+    const level = 5;
+    const maxHealth = (baseStats.hp || 50) + level * 2;
+
+    return {
+      // Core identity
+      symbol: capture.token.symbol,
+      name: capture.token.name,
+      address: capture.token.address,
+      caughtAt: capturedAt,
+
+      // Price tracking
+      purchasePrice,
+      currentPrice,
+      peakPrice: Math.max(purchasePrice, currentPrice),
+      maxGain:
+        currentPrice > purchasePrice
+          ? (currentPrice - purchasePrice) / purchasePrice
+          : 0,
+      lastPriceUpdate: Date.now(),
+      priceHistory: capture.priceHistory,
+
+      // Leveling
+      level,
+      maxLevel: 100,
+      experience: 0,
+
+      // Health
+      health: maxHealth,
+      maxHealth,
+      isKnockedOut: false,
+      lastHealthUpdate: Date.now(),
+
+      // Battle stats
+      stats: {
+        attack: (baseStats.attack || 10) + level,
+        defense: (baseStats.defense || 10) + level,
+        speed: (baseStats.speed || 10) + level,
+        hp: maxHealth,
+      },
+
+      // Moves
+      moves: DEFAULT_MOVES.filter((m) => m.learnedAt <= level),
+
+      // Metadata
+      rarity: "common",
+      type: tokenType,
+      description: `A ${tokenType} token captured on-chain.`,
+
+      // History
+      levelHistory: [
+        {
+          level,
+          price: purchasePrice,
+          timestamp: capturedAt,
+          event: "caught",
+        },
+      ],
+    };
+  }
+
+  private showNoTokensMessage() {
+    this.currentState = "menu";
+    this.dialogText?.setText(
+      "You don't have any tokens\nto trade! Come back when\nyou've caught some!",
+    );
+
+    this.time.delayedCall(2500, () => {
+      this.exitTrader();
+    });
+  }
+
+  private showWelcomeMessage() {
+    this.currentState = "menu";
+    this.dialogText?.setText(
+      "Welcome to the Token Trader!\nI buy tokens for USDC.\nWhich one to sell?",
+    );
+
+    this.time.delayedCall(1500, () => {
+      this.showInventoryMenu();
+    });
   }
 
   private showInventoryMenu() {
@@ -172,16 +337,15 @@ export class TraderScene extends Phaser.Scene {
         this.selectedOption = 0;
         this.tokenToSell = undefined;
 
-        // Reload inventory (in case it changed)
-        const gameStore = (window as any).gameStore;
-        if (gameStore) {
-          this.inventory = gameStore.getState().inventory;
-        }
+        // Reload inventory from cache (in case it changed)
+        await this.loadInventoryFromCache();
 
-        // Show menu again
-        this.dialogText?.setVisible(false);
-        this.menuText?.setVisible(true);
-        this.updateMenuOptions();
+        // Show menu again if we have tokens
+        if (this.inventory.length > 0) {
+          this.dialogText?.setVisible(false);
+          this.menuText?.setVisible(true);
+          this.updateMenuOptions();
+        }
       }
     }
   }
@@ -234,6 +398,9 @@ export class TraderScene extends Phaser.Scene {
           gameStore.getState().addUSDC(usdcAmount);
         }
 
+        // Clear stats cache so next load will fetch fresh data
+        gameStore.getState().clearStatsCache();
+
         // Show success message
         this.dialogText?.setText(
           `Sold ${this.tokenToSell.symbol}!\nReceived ${usdcAmount.toFixed(2)} USDC.\nThank you!`,
@@ -260,22 +427,21 @@ export class TraderScene extends Phaser.Scene {
     this.dialogText?.setVisible(true);
     this.dialogText?.setText(message);
 
-    this.time.delayedCall(3000, () => {
+    this.time.delayedCall(3000, async () => {
       // Go back to menu
       this.currentState = "menu";
       this.selectedOption = 0;
       this.tokenToSell = undefined;
 
-      // Reload inventory
-      const gameStore = (window as any).gameStore;
-      if (gameStore) {
-        this.inventory = gameStore.getState().inventory;
-      }
+      // Reload inventory from cache
+      await this.loadInventoryFromCache();
 
-      // Show menu again
-      this.dialogText?.setVisible(false);
-      this.menuText?.setVisible(true);
-      this.updateMenuOptions();
+      // Show menu again if we have tokens
+      if (this.inventory.length > 0) {
+        this.dialogText?.setVisible(false);
+        this.menuText?.setVisible(true);
+        this.updateMenuOptions();
+      }
     });
   }
 
