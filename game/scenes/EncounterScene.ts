@@ -1,5 +1,5 @@
-import * as Phaser from 'phaser';
-import { getTokenType } from '@/lib/types/token';
+import * as Phaser from "phaser";
+import { getTokenType } from "@/lib/types/token";
 
 interface EncounterData {
   tokenSymbol?: string;
@@ -16,10 +16,10 @@ export class EncounterScene extends Phaser.Scene {
   private tokenSprite?: Phaser.GameObjects.Sprite;
   private currentToken?: EncounterData;
   private catchInProgress = false;
-  private callingScene: string = 'OverworldScene'; // Default for backwards compatibility
+  private callingScene: string = "OverworldScene"; // Default for backwards compatibility
 
   constructor() {
-    super('EncounterScene');
+    super("EncounterScene");
   }
 
   async create(data: EncounterData) {
@@ -36,13 +36,20 @@ export class EncounterScene extends Phaser.Scene {
     const centerY = this.cameras.main.centerY;
 
     // Dark background
-    this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x0f380f)
+    this.add
+      .rectangle(
+        0,
+        0,
+        this.cameras.main.width,
+        this.cameras.main.height,
+        0x0f380f,
+      )
       .setOrigin(0);
 
     // Fetch a random token from our API if not provided
     if (!data.tokenSymbol) {
       try {
-        const response = await fetch('/api/tokens/encounter');
+        const response = await fetch("/api/tokens/encounter");
         const result = await response.json();
 
         data = {
@@ -53,12 +60,12 @@ export class EncounterScene extends Phaser.Scene {
           tokenPrice: result.token.price || 100, // Add price data
         };
       } catch (error) {
-        console.error('Failed to fetch encounter:', error);
+        console.error("Failed to fetch encounter:", error);
         data = {
-          tokenSymbol: 'USDC',
-          tokenName: 'Stablecoin',
-          tokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-          tokenRarity: 'common',
+          tokenSymbol: "USDC",
+          tokenName: "Stablecoin",
+          tokenAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          tokenRarity: "common",
           tokenPrice: 1, // USDC is always $1
         };
       }
@@ -67,79 +74,68 @@ export class EncounterScene extends Phaser.Scene {
     this.currentToken = data;
 
     // Determine token type from symbol and create animated sprite
-    const tokenType = getTokenType(data.tokenSymbol || 'UNKNOWN');
+    const tokenType = getTokenType(data.tokenSymbol || "UNKNOWN");
     const spriteKey = `token-${tokenType}`;
 
     this.tokenSprite = this.add.sprite(centerX, centerY - 30, spriteKey);
     this.tokenSprite.setScale(2); // Make it larger for encounter
-    this.tokenSprite.play(spriteKey + '-idle');
+    this.tokenSprite.play(spriteKey + "-idle");
 
     // Add a simple bounce animation
     this.tweens.add({
       targets: this.tokenSprite,
       y: centerY - 35,
       duration: 800,
-      ease: 'Sine.easeInOut',
+      ease: "Sine.easeInOut",
       yoyo: true,
       repeat: -1,
     });
 
     // Encounter text
-    this.encounterText = this.add.text(
-      centerX,
-      centerY + 20,
-      `A wild ${data.tokenName} appeared!`,
-      {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9bbc0f',
-        align: 'center',
-      }
-    ).setOrigin(0.5);
+    this.encounterText = this.add
+      .text(centerX, centerY + 20, `A wild ${data.tokenName} appeared!`, {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#9bbc0f",
+        align: "center",
+      })
+      .setOrigin(0.5);
 
     // Token info
-    this.add.text(
-      centerX,
-      centerY + 35,
-      `${data.tokenSymbol} - ${data.tokenRarity?.toUpperCase()}`,
-      {
-        fontFamily: 'monospace',
-        fontSize: '8px',
-        color: '#9bbc0f',
-        align: 'center',
-      }
-    ).setOrigin(0.5);
+    this.add
+      .text(
+        centerX,
+        centerY + 35,
+        `${data.tokenSymbol} - ${data.tokenRarity?.toUpperCase()}`,
+        {
+          fontFamily: "monospace",
+          fontSize: "8px",
+          color: "#9bbc0f",
+          align: "center",
+        },
+      )
+      .setOrigin(0.5);
 
     // Action menu
     const menuY = this.cameras.main.height - 30;
 
-    this.add.rectangle(
-      0,
-      menuY - 5,
-      this.cameras.main.width,
-      40,
-      0x000000,
-      0.7
-    ).setOrigin(0);
+    this.add
+      .rectangle(0, menuY - 5, this.cameras.main.width, 40, 0x000000, 0.7)
+      .setOrigin(0);
 
-    this.actionText = this.add.text(
-      8,
-      menuY,
-      'CATCH    RUN\n[C]      [R]',
-      {
-        fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#9bbc0f',
-      }
-    );
+    this.actionText = this.add.text(8, menuY, "CATCH    RUN\n[C]      [R]", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9bbc0f",
+    });
 
     // Set up input - use once() to automatically clean up after use
-    this.input.keyboard?.once('keydown-C', this.attemptCatch, this);
-    this.input.keyboard?.once('keydown-R', this.runAway, this);
-    this.input.keyboard?.once('keydown-ESC', this.runAway, this);
+    this.input.keyboard?.once("keydown-C", this.attemptCatch, this);
+    this.input.keyboard?.once("keydown-R", this.runAway, this);
+    this.input.keyboard?.once("keydown-ESC", this.runAway, this);
 
     // Register shutdown handler
-    this.events.once('shutdown', this.onShutdown, this);
+    this.events.once("shutdown", this.onShutdown, this);
   }
 
   private async attemptCatch() {
@@ -147,19 +143,19 @@ export class EncounterScene extends Phaser.Scene {
     this.catchInProgress = true;
 
     // Remove other key listeners since we started an action
-    this.input.keyboard?.off('keydown-R');
-    this.input.keyboard?.off('keydown-ESC');
+    this.input.keyboard?.off("keydown-R");
+    this.input.keyboard?.off("keydown-ESC");
 
     const { tokenSymbol, tokenName, tokenAddress } = this.currentToken;
 
     this.encounterText?.setText(`Catching ${tokenSymbol}...`);
-    this.actionText?.setText('');
+    this.actionText?.setText("");
 
     // Check if player has pokeballs
     const gameStore = (window as any).gameStore;
 
     if (gameStore && gameStore.getState().pokeballs === 0) {
-      this.encounterText?.setText('No pokeballs left!');
+      this.encounterText?.setText("No pokeballs left!");
 
       this.time.delayedCall(1500, () => {
         this.returnToOverworld();
@@ -182,13 +178,13 @@ export class EncounterScene extends Phaser.Scene {
   private async executeSwap(
     tokenSymbol: string | undefined,
     tokenName: string | undefined,
-    tokenAddress: string | undefined
+    tokenAddress: string | undefined,
   ) {
     // Check if SwapBridge is available
     const swapBridge = (window as any).swapBridge;
     if (!swapBridge) {
-      console.error('SwapBridge not available');
-      this.encounterText?.setText('Swap unavailable!');
+      console.error("SwapBridge not available");
+      this.encounterText?.setText("Swap unavailable!");
       this.time.delayedCall(1500, () => {
         this.returnToOverworld();
       });
@@ -196,22 +192,24 @@ export class EncounterScene extends Phaser.Scene {
     }
 
     try {
-      console.log('[EncounterScene] Starting swap execution for', tokenSymbol);
+      console.log("[EncounterScene] Starting swap execution for", tokenSymbol);
 
       // Get token info from GAME_CONFIG
-      const gameConfig = await import('@/lib/web3/config').then((m) => m.GAME_CONFIG);
+      const gameConfig = await import("@/lib/web3/config").then(
+        (m) => m.GAME_CONFIG,
+      );
       const usdcAmount = gameConfig.POKEBALL_COST_USDC; // 1 USDC per pokeball
 
       // Get token info
-      const tokenInfo = await import('@/lib/web3/config').then((m) => {
-        return m.getTokenInfo(tokenAddress || '');
+      const tokenInfo = await import("@/lib/web3/config").then((m) => {
+        return m.getTokenInfo(tokenAddress || "");
       });
 
-      console.log('[EncounterScene] Token info:', tokenInfo);
+      console.log("[EncounterScene] Token info:", tokenInfo);
 
       if (!tokenInfo || !tokenAddress) {
-        console.error('[EncounterScene] Token not found:', tokenAddress);
-        this.encounterText?.setText('Token not found!');
+        console.error("[EncounterScene] Token not found:", tokenAddress);
+        this.encounterText?.setText("Token not found!");
         this.time.delayedCall(1500, () => {
           this.returnToOverworld();
         });
@@ -219,13 +217,16 @@ export class EncounterScene extends Phaser.Scene {
       }
 
       // Update UI for swap steps
-      this.encounterText?.setText('Swapping USDC...');
+      this.encounterText?.setText("Swapping USDC...");
 
-      console.log('[EncounterScene] Calling swapBridge.catchToken...');
+      console.log("[EncounterScene] Calling swapBridge.catchToken...");
 
       // Execute the swap with timeout
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Swap timeout - took too long')), 120000); // 2 min timeout
+        setTimeout(
+          () => reject(new Error("Swap timeout - took too long")),
+          120000,
+        ); // 2 min timeout
       });
 
       const result = await Promise.race([
@@ -233,7 +234,7 @@ export class EncounterScene extends Phaser.Scene {
         timeoutPromise,
       ]);
 
-      console.log('[EncounterScene] Swap result:', result);
+      console.log("[EncounterScene] Swap result:", result);
 
       if (result.success) {
         this.encounterText?.setText(`${tokenSymbol} caught!`);
@@ -246,8 +247,8 @@ export class EncounterScene extends Phaser.Scene {
           const walletAddress = state.walletAddress;
 
           gameStore.getState().catchToken({
-            symbol: tokenSymbol || 'UNKNOWN',
-            name: tokenName || 'Unknown Token',
+            symbol: tokenSymbol || "UNKNOWN",
+            name: tokenName || "Unknown Token",
             address: tokenAddress,
             caughtAt: Date.now(),
             purchasePrice: currentPrice,
@@ -255,22 +256,36 @@ export class EncounterScene extends Phaser.Scene {
             peakPrice: currentPrice,
             lastPriceUpdate: Date.now(),
             priceHistory: [{ price: currentPrice, timestamp: Date.now() }],
-            rarity: (this.currentToken?.tokenRarity as any) || 'common',
-            type: getTokenType(tokenSymbol || 'UNKNOWN'),
-            description: `A ${tokenName || 'Unknown Token'} from the blockchain.`,
+            rarity: (this.currentToken?.tokenRarity as any) || "common",
+            type: getTokenType(tokenSymbol || "UNKNOWN"),
+            description: `A ${tokenName || "Unknown Token"} from the blockchain.`,
             levelHistory: [],
             experience: 0,
             moves: [],
           });
 
           // Register capture in database
-          if (result.txHash && walletAddress) {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-            const expectedAmount = '1000000000000000000'; // TODO: Get from swap quote
+          if (result.txHash && walletAddress && result.amountOut) {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+
+            // Convert amountOut from human-readable to base units
+            // result.amountOut is in human-readable format (e.g., "1.5")
+            // We need to convert it to base units (e.g., "1500000000000000000")
+            const amountFloat = parseFloat(result.amountOut);
+            const amountInBaseUnits = BigInt(
+              Math.floor(amountFloat * Math.pow(10, tokenInfo.decimals)),
+            );
+            const expectedAmount = amountInBaseUnits.toString();
+
+            console.log("[EncounterScene] Registering capture:", {
+              amountOut: result.amountOut,
+              decimals: tokenInfo.decimals,
+              expectedAmount,
+            });
 
             fetch(`${apiUrl}/api/game/capture`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 txHash: result.txHash,
                 walletAddress,
@@ -281,10 +296,13 @@ export class EncounterScene extends Phaser.Scene {
             })
               .then((res) => res.json())
               .then((data) => {
-                console.log('[EncounterScene] Capture registered:', data);
+                console.log("[EncounterScene] Capture registered:", data);
               })
               .catch((error) => {
-                console.error('[EncounterScene] Failed to register capture:', error);
+                console.error(
+                  "[EncounterScene] Failed to register capture:",
+                  error,
+                );
               });
           }
         }
@@ -302,8 +320,8 @@ export class EncounterScene extends Phaser.Scene {
           gameStore.getState().addPokeballs(1);
         }
 
-        const errorMsg = result.error || 'Swap failed';
-        console.error('Swap failed:', errorMsg);
+        const errorMsg = result.error || "Swap failed";
+        console.error("Swap failed:", errorMsg);
         this.encounterText?.setText(`Failed: ${errorMsg.substring(0, 20)}...`);
 
         this.time.delayedCall(2500, () => {
@@ -311,7 +329,7 @@ export class EncounterScene extends Phaser.Scene {
         });
       }
     } catch (error) {
-      console.error('Swap error:', error);
+      console.error("Swap error:", error);
 
       // Return the pokeball on error
       const gameStore = (window as any).gameStore;
@@ -319,7 +337,7 @@ export class EncounterScene extends Phaser.Scene {
         gameStore.getState().addPokeballs(1);
       }
 
-      this.encounterText?.setText('Swap error!');
+      this.encounterText?.setText("Swap error!");
       this.time.delayedCall(1500, () => {
         this.returnToOverworld();
       });
@@ -331,11 +349,11 @@ export class EncounterScene extends Phaser.Scene {
     this.catchInProgress = true;
 
     // Remove other key listeners since we started an action
-    this.input.keyboard?.off('keydown-C');
-    this.input.keyboard?.off('keydown-ESC');
+    this.input.keyboard?.off("keydown-C");
+    this.input.keyboard?.off("keydown-ESC");
 
-    this.encounterText?.setText('Got away safely!');
-    this.actionText?.setText('');
+    this.encounterText?.setText("Got away safely!");
+    this.actionText?.setText("");
 
     this.time.delayedCall(800, () => {
       this.returnToOverworld();
@@ -355,9 +373,9 @@ export class EncounterScene extends Phaser.Scene {
   private onShutdown() {
     // Clean up any remaining keyboard events
     if (this.input.keyboard) {
-      this.input.keyboard.off('keydown-C');
-      this.input.keyboard.off('keydown-R');
-      this.input.keyboard.off('keydown-ESC');
+      this.input.keyboard.off("keydown-C");
+      this.input.keyboard.off("keydown-R");
+      this.input.keyboard.off("keydown-ESC");
     }
 
     // Reset state

@@ -29,7 +29,12 @@ export function SwapBridge() {
           tokenAddress: string,
           tokenDecimals: number,
           usdcAmount: string,
-        ): Promise<{ success: boolean; txHash?: string; error?: string }> => {
+        ): Promise<{
+          success: boolean;
+          txHash?: string;
+          error?: string;
+          amountOut?: string;
+        }> => {
           try {
             console.log("[SwapBridge] catchToken called:", {
               tokenAddress,
@@ -48,7 +53,9 @@ export function SwapBridge() {
             console.log("[SwapBridge] Hook returned txHash:", txHash);
 
             if (txHash) {
-              return { success: true, txHash };
+              // Get the amount of tokens received from the swap state
+              const amountOut = catchState.amountOut || "0";
+              return { success: true, txHash, amountOut };
             } else {
               const errorMsg = catchState.error || "Swap failed";
               console.error("[SwapBridge] Swap failed:", errorMsg);

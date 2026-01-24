@@ -31,13 +31,19 @@ interface StatsAPIResponse {
   captures: StatsAPICapture[];
 }
 
+// Extended token type for trading with amount and decimals
+interface TradableToken extends CaughtToken {
+  amountCaptured: string; // Token amount as string (e.g., "100.5")
+  decimals: number; // Token decimals (e.g., 18 for most tokens)
+}
+
 export class TraderScene extends Phaser.Scene {
   private dialogText?: Phaser.GameObjects.Text;
   private menuText?: Phaser.GameObjects.Text;
   private selectedOption = 0;
-  private inventory: CaughtToken[] = [];
+  private inventory: TradableToken[] = [];
   private currentState: "menu" | "confirm" | "loading" = "loading";
-  private tokenToSell?: CaughtToken;
+  private tokenToSell?: TradableToken;
   private callingScene: string = "OverworldScene"; // Default for backwards compatibility
 
   constructor() {
@@ -179,7 +185,7 @@ export class TraderScene extends Phaser.Scene {
     }
   }
 
-  private transformAPIToken(capture: StatsAPICapture): CaughtToken {
+  private transformAPIToken(capture: StatsAPICapture): TradableToken {
     const tokenType = getTokenType(capture.token.symbol);
     const baseStats = getBaseStats(tokenType);
     const purchasePrice = parseFloat(capture.purchasePrice);
@@ -244,6 +250,10 @@ export class TraderScene extends Phaser.Scene {
           event: "caught",
         },
       ],
+
+      // Trading info
+      amountCaptured: capture.amountCaptured,
+      decimals: capture.token.decimals,
     };
   }
 
@@ -278,20 +288,47 @@ export class TraderScene extends Phaser.Scene {
 
   private updateMenuOptions() {
     if (this.currentState === "menu") {
-      // Show inventory with prices
+      // Show inventory with total value (amountCaptured * currentPrice)
       const options = this.inventory.map((token, i) => {
-        const salePrice = Math.floor(token.currentPrice * 0.8);
-        return `${i === this.selectedOption ? ">" : " "} ${token.symbol} (${token.name}) - ${salePrice} USDC`;
+        // Convert from base units to human-readable amount
+        const amountBigInt = BigInt(token.amountCaptured);
+        const divisor = BigInt(10 ** token.decimals);
+        const humanReadableAmount = Number(amountBigInt) / Number(divisor);
+
+        const totalValue = humanReadableAmount * token.currentPrice;
+        const displayValue =
+          totalValue >= 0.01 ? totalValue.toFixed(2) : totalValue.toFixed(6);
+
+        // Format amount based on size
+        const amountDisplay =
+          humanReadableAmount >= 1
+            ? humanReadableAmount.toFixed(4)
+            : humanReadableAmount.toFixed(8);
+
+        return `${i === this.selectedOption ? ">" : " "} ${token.symbol} (${amountDisplay}) - $${displayValue}`;
       });
       options.push(
         `${this.inventory.length === this.selectedOption ? ">" : " "} Exit Trader`,
       );
       this.menuText?.setText(options.join("\n"));
     } else if (this.currentState === "confirm") {
-      // Show confirmation dialog
-      const salePrice = Math.floor(this.tokenToSell.currentPrice * 0.8);
+      // Show confirmation dialog with total value
+      const amountBigInt = BigInt(this.tokenToSell.amountCaptured);
+      const divisor = BigInt(10 ** this.tokenToSell.decimals);
+      const humanReadableAmount = Number(amountBigInt) / Number(divisor);
+
+      const totalValue = humanReadableAmount * this.tokenToSell.currentPrice;
+      const displayValue =
+        totalValue >= 0.01 ? totalValue.toFixed(2) : totalValue.toFixed(6);
+
+      const amountDisplay =
+        humanReadableAmount >= 1
+          ? humanReadableAmount.toFixed(4)
+          : humanReadableAmount.toFixed(8);
+
       const confirmOptions = [
-        `Sell ${this.tokenToSell.symbol} for ${salePrice} USDC?`,
+        `Sell ${amountDisplay} ${this.tokenToSell.symbol}`,
+        `for ~$${displayValue} USDC?`,
         "",
         `${this.selectedOption === 0 ? ">" : " "} Yes`,
         `${this.selectedOption === 1 ? ">" : " "} No`,
@@ -368,18 +405,21 @@ export class TraderScene extends Phaser.Scene {
     );
 
     try {
-      // Get token info - we need to calculate how much of the token to sell
-      // For now, let's sell a small amount (0.01 tokens) as a proof of concept
-      const tokenAmount = "0.01";
-      const tokenDecimals = 18; // Most tokens use 18 decimals
+      // Convert amountCaptured from base units to human-readable amount
+      const amountBigInt = BigInt(this.tokenToSell.amountCaptured);
+      const divisor = BigInt(10 ** this.tokenToSell.decimals);
+      const humanReadableAmount = Number(amountBigInt) / Number(divisor);
+      const tokenAmount = humanReadableAmount.toString();
+      const tokenDecimals = this.tokenToSell.decimals;
 
       console.log("[TraderScene] Executing swap:", {
         tokenAddress: this.tokenToSell.address,
         tokenAmount,
         tokenDecimals,
+        amountCaptured: this.tokenToSell.amountCaptured,
       });
 
-      // Execute the swap
+      // Execute the swap with human-readable amount
       const result = await swapBridge.sellToken(
         this.tokenToSell.address,
         tokenDecimals,
