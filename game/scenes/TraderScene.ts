@@ -148,7 +148,7 @@ export class TraderScene extends Phaser.Scene {
     this.updateMenuOptions();
   }
 
-  private confirmSelection() {
+  private async confirmSelection() {
     if (this.currentState === "menu") {
       if (this.selectedOption === this.inventory.length) {
         // Exit option selected
@@ -164,23 +164,8 @@ export class TraderScene extends Phaser.Scene {
       this.updateMenuOptions();
     } else if (this.currentState === "confirm") {
       if (this.selectedOption === 0) {
-        // Yes - sell the token
-        const gameStore = (window as any).gameStore;
-        if (gameStore) {
-          const salePrice = Math.floor(this.tokenToSell.currentPrice * 0.8);
-          gameStore.getState().sellToken(this.tokenToSell.address);
-
-          // Hide menu, show confirmation message
-          this.menuText?.setVisible(false);
-          this.dialogText?.setVisible(true);
-          this.dialogText?.setText(
-            `Sold ${this.tokenToSell.symbol}!\nReceived ${salePrice} USDC.\nThank you!`,
-          );
-
-          this.time.delayedCall(2000, () => {
-            this.exitTrader();
-          });
-        }
+        // Yes - sell the token via swap API
+        await this.executeSell();
       } else {
         // No - go back to menu
         this.currentState = "menu";
@@ -199,6 +184,99 @@ export class TraderScene extends Phaser.Scene {
         this.updateMenuOptions();
       }
     }
+  }
+
+  private async executeSell() {
+    const swapBridge = (window as any).swapBridge;
+    const gameStore = (window as any).gameStore;
+
+    if (!swapBridge || !gameStore) {
+      console.error("[TraderScene] SwapBridge or GameStore not available");
+      this.showError("Swap system not available!");
+      return;
+    }
+
+    // Hide menu, show swap progress
+    this.menuText?.setVisible(false);
+    this.dialogText?.setVisible(true);
+    this.dialogText?.setText(
+      `Selling ${this.tokenToSell.symbol}...\nPlease confirm in your wallet.`,
+    );
+
+    try {
+      // Get token info - we need to calculate how much of the token to sell
+      // For now, let's sell a small amount (0.01 tokens) as a proof of concept
+      const tokenAmount = "0.01";
+      const tokenDecimals = 18; // Most tokens use 18 decimals
+
+      console.log("[TraderScene] Executing swap:", {
+        tokenAddress: this.tokenToSell.address,
+        tokenAmount,
+        tokenDecimals,
+      });
+
+      // Execute the swap
+      const result = await swapBridge.sellToken(
+        this.tokenToSell.address,
+        tokenDecimals,
+        tokenAmount,
+      );
+
+      if (result.success) {
+        const usdcReceived = result.amountOut || "0";
+        const usdcAmount = parseFloat(usdcReceived);
+
+        // Remove token from local inventory
+        gameStore.getState().sellToken(this.tokenToSell.address);
+
+        // Add USDC to balance
+        if (usdcAmount > 0) {
+          gameStore.getState().addUSDC(usdcAmount);
+        }
+
+        // Show success message
+        this.dialogText?.setText(
+          `Sold ${this.tokenToSell.symbol}!\nReceived ${usdcAmount.toFixed(2)} USDC.\nThank you!`,
+        );
+
+        this.time.delayedCall(2000, () => {
+          this.exitTrader();
+        });
+      } else {
+        // Show error
+        const errorMsg = result.error || "Unknown error";
+        this.showError(`Swap failed: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("[TraderScene] Sell error:", error);
+      this.showError(
+        error instanceof Error ? error.message : "Failed to sell token",
+      );
+    }
+  }
+
+  private showError(message: string) {
+    this.menuText?.setVisible(false);
+    this.dialogText?.setVisible(true);
+    this.dialogText?.setText(message);
+
+    this.time.delayedCall(3000, () => {
+      // Go back to menu
+      this.currentState = "menu";
+      this.selectedOption = 0;
+      this.tokenToSell = undefined;
+
+      // Reload inventory
+      const gameStore = (window as any).gameStore;
+      if (gameStore) {
+        this.inventory = gameStore.getState().inventory;
+      }
+
+      // Show menu again
+      this.dialogText?.setVisible(false);
+      this.menuText?.setVisible(true);
+      this.updateMenuOptions();
+    });
   }
 
   private handleEscape() {

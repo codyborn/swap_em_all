@@ -1,5 +1,5 @@
-import { BaseMapScene, MapData } from '../BaseMapScene';
-import { PALLET_TOWN_MAP } from '../../data/maps/pallet-town-data';
+import { BaseMapScene, MapData } from "../BaseMapScene";
+import { PALLET_TOWN_MAP } from "../../data/maps/pallet-town-data";
 
 /**
  * Pallet Town - Starting area
@@ -13,7 +13,7 @@ import { PALLET_TOWN_MAP } from '../../data/maps/pallet-town-data';
  */
 export class PalletTownScene extends BaseMapScene {
   constructor() {
-    super('PalletTownScene');
+    super("PalletTownScene");
   }
 
   protected getMapData(): MapData {
@@ -21,15 +21,27 @@ export class PalletTownScene extends BaseMapScene {
   }
 
   protected getSceneName(): string {
-    return 'PalletTown';
+    return "PalletTown";
   }
 
   // Override if we need custom logic for Pallet Town
   create(data?: { spawnPoint?: string }) {
     super.create(data);
 
-    // Add Pallet Town specific logic here if needed
-    // For example, first-time tutorial triggers, etc.
+    // Fetch and cache stats on game load
+    const store = (window as any).gameStore;
+    if (store) {
+      const walletAddress = store.getState().walletAddress;
+      if (walletAddress) {
+        // Fetch stats in the background
+        store
+          .getState()
+          .fetchAndCacheStats()
+          .catch((error: Error) => {
+            console.error("[PalletTownScene] Failed to fetch stats:", error);
+          });
+      }
+    }
   }
 
   /**

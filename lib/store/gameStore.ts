@@ -1,9 +1,14 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { CaughtToken, DEFAULT_MOVES, getTokenType, getBaseStats } from '../types/token';
-import { Badge } from '../types/battle';
-import { LevelingSystem } from '../utils/levelingSystem';
-import { DamageCalculator } from '../utils/damageCalculator';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import {
+  CaughtToken,
+  DEFAULT_MOVES,
+  getTokenType,
+  getBaseStats,
+} from "../types/token";
+import { Badge } from "../types/battle";
+import { LevelingSystem } from "../utils/levelingSystem";
+import { DamageCalculator } from "../utils/damageCalculator";
 
 // Legacy type for backward compatibility
 export interface TokenCreature {
@@ -46,11 +51,19 @@ export interface GameState {
   // Settings
   priceUpdateInterval: number;
 
+  // Stats cache
+  statsCache: {
+    data: any | null;
+    lastFetched: number | null;
+  };
+
   // Actions - Existing
   setWalletAddress: (address: string | null) => void;
   addPokeballs: (count: number) => void;
   usePokeball: () => boolean;
-  catchToken: (token: Omit<CaughtToken, 'level' | 'health' | 'stats'> | TokenCreature) => void;
+  catchToken: (
+    token: Omit<CaughtToken, "level" | "health" | "stats"> | TokenCreature,
+  ) => void;
   sellToken: (tokenAddress: string) => void;
   addToCryptodex: (tokenAddress: string) => void;
   completeTutorial: () => void;
@@ -58,8 +71,11 @@ export interface GameState {
   resetGame: () => void;
 
   // Actions - Items
-  addItem: (itemType: keyof GameState['items'], quantity: number) => void;
-  useItem: (itemType: keyof GameState['items'], tokenAddress: string) => boolean;
+  addItem: (itemType: keyof GameState["items"], quantity: number) => void;
+  useItem: (
+    itemType: keyof GameState["items"],
+    tokenAddress: string,
+  ) => boolean;
 
   // Actions - Price & Health
   updateTokenPrice: (address: string, newPrice: number) => void;
@@ -74,6 +90,10 @@ export interface GameState {
   // Actions - USDC
   addUSDC: (amount: number) => void;
   spendUSDC: (amount: number) => boolean;
+
+  // Actions - Stats Cache
+  fetchAndCacheStats: () => Promise<void>;
+  clearStatsCache: () => void;
 }
 
 export const useGameStore = create<GameState>()(
@@ -81,8 +101,8 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       // Initial state
       walletAddress: null,
-      pokeballs: 5,  // Start with 5
-      usdc: 1000,    // Start with 1000 USDC
+      pokeballs: 5, // Start with 5
+      usdc: 1000, // Start with 1000 USDC
       inventory: [],
       items: {
         potions: 3,
@@ -98,6 +118,10 @@ export const useGameStore = create<GameState>()(
       tutorialComplete: false,
       encountersCount: 0,
       priceUpdateInterval: 300000, // 5 minutes
+      statsCache: {
+        data: null,
+        lastFetched: null,
+      },
 
       // Existing actions
       setWalletAddress: (address: string | null) =>
@@ -115,9 +139,11 @@ export const useGameStore = create<GameState>()(
         return false;
       },
 
-      catchToken: (token: Omit<CaughtToken, 'level' | 'health' | 'stats'> | TokenCreature) => {
+      catchToken: (
+        token: Omit<CaughtToken, "level" | "health" | "stats"> | TokenCreature,
+      ) => {
         // Convert legacy TokenCreature to CaughtToken if needed
-        const isLegacy = 'amount' in token;
+        const isLegacy = "amount" in token;
 
         let caughtToken: CaughtToken;
 
@@ -131,7 +157,12 @@ export const useGameStore = create<GameState>()(
           const currGain = 0; // Starting at purchase price means 0 gain
           const maxGain = 0; // Starting at purchase price means 0 gain
           const level = 1;
-          const stats = LevelingSystem.calculateStats(level, currGain, tokenType, baseStats);
+          const stats = LevelingSystem.calculateStats(
+            level,
+            currGain,
+            tokenType,
+            baseStats,
+          );
           const maxHealth = LevelingSystem.calculateMaxHealth(level, tokenType);
 
           caughtToken = {
@@ -154,7 +185,7 @@ export const useGameStore = create<GameState>()(
             lastHealthUpdate: Date.now(),
             stats,
             moves: DEFAULT_MOVES.filter((m) => m.learnedAt <= level),
-            rarity: 'common',
+            rarity: "common",
             type: tokenType,
             description: `A ${legacyToken.name} token from the blockchain.`,
             levelHistory: [
@@ -162,26 +193,33 @@ export const useGameStore = create<GameState>()(
                 level: 1,
                 price: currentPrice,
                 timestamp: Date.now(),
-                event: 'caught',
+                event: "caught",
               },
             ],
           };
         } else {
           // Already in new format, just add missing fields
-          const newToken = token as Omit<CaughtToken, 'level' | 'health' | 'stats'>;
+          const newToken = token as Omit<
+            CaughtToken,
+            "level" | "health" | "stats"
+          >;
           const tokenType = newToken.type || getTokenType(newToken.symbol);
 
           // Calculate gains
           const currGain = LevelingSystem.calculateCurrentGain(
             newToken.purchasePrice,
-            newToken.currentPrice
+            newToken.currentPrice,
           );
           const maxGain = LevelingSystem.calculateMaxGain(
             newToken.purchasePrice,
-            newToken.peakPrice || newToken.currentPrice
+            newToken.peakPrice || newToken.currentPrice,
           );
           const level = LevelingSystem.calculateLevel(maxGain);
-          const stats = LevelingSystem.calculateStats(level, currGain, tokenType);
+          const stats = LevelingSystem.calculateStats(
+            level,
+            currGain,
+            tokenType,
+          );
           const maxHealth = LevelingSystem.calculateMaxHealth(level, tokenType);
 
           caughtToken = {
@@ -208,7 +246,9 @@ export const useGameStore = create<GameState>()(
 
       sellToken: (tokenAddress: string) =>
         set((state) => {
-          const tokenIndex = state.inventory.findIndex((t) => t.address === tokenAddress);
+          const tokenIndex = state.inventory.findIndex(
+            (t) => t.address === tokenAddress,
+          );
           if (tokenIndex === -1) return state;
 
           const token = state.inventory[tokenIndex];
@@ -217,7 +257,7 @@ export const useGameStore = create<GameState>()(
           // Remove only the first token with this address (sell one at a time)
           const newInventory = [
             ...state.inventory.slice(0, tokenIndex),
-            ...state.inventory.slice(tokenIndex + 1)
+            ...state.inventory.slice(tokenIndex + 1),
           ];
 
           return {
@@ -254,7 +294,10 @@ export const useGameStore = create<GameState>()(
         }
 
         // Define item effects
-        const itemEffects: Record<string, { heal?: number; revive?: boolean; percent?: number }> = {
+        const itemEffects: Record<
+          string,
+          { heal?: number; revive?: boolean; percent?: number }
+        > = {
           potions: { heal: 20 },
           superPotions: { heal: 50 },
           hyperPotions: { heal: 100 },
@@ -267,7 +310,10 @@ export const useGameStore = create<GameState>()(
 
         if (effect.revive && token.isKnockedOut) {
           // Revive
-          const newHealth = DamageCalculator.reviveToken(token.maxHealth, effect.percent);
+          const newHealth = DamageCalculator.reviveToken(
+            token.maxHealth,
+            effect.percent,
+          );
           get().updateTokenHealth(tokenAddress, newHealth);
 
           set((state) => ({
@@ -278,7 +324,7 @@ export const useGameStore = create<GameState>()(
             inventory: state.inventory.map((t) =>
               t.address === tokenAddress
                 ? { ...t, isKnockedOut: false, health: newHealth }
-                : t
+                : t,
             ),
           }));
 
@@ -288,7 +334,7 @@ export const useGameStore = create<GameState>()(
           const newHealth = DamageCalculator.healToken(
             token.health,
             token.maxHealth,
-            effect.heal
+            effect.heal,
           );
           get().updateTokenHealth(tokenAddress, newHealth);
 
@@ -308,13 +354,18 @@ export const useGameStore = create<GameState>()(
       // New V2 actions - Price & Health
       updateTokenPrice: (address, newPrice) =>
         set((state) => {
-          const tokenIndex = state.inventory.findIndex((t) => t.address === address);
+          const tokenIndex = state.inventory.findIndex(
+            (t) => t.address === address,
+          );
           if (tokenIndex === -1) return state;
 
           const token = state.inventory[tokenIndex];
           const oldLevel = token.level;
           const newPeakPrice = Math.max(token.peakPrice, newPrice);
-          const newMaxGain = LevelingSystem.calculateMaxGain(token.purchasePrice, newPeakPrice);
+          const newMaxGain = LevelingSystem.calculateMaxGain(
+            token.purchasePrice,
+            newPeakPrice,
+          );
           const newLevel = LevelingSystem.calculateLevel(newMaxGain);
 
           // Calculate level up
@@ -331,17 +382,27 @@ export const useGameStore = create<GameState>()(
 
           if (newLevel > oldLevel) {
             // Level up!
-            const levelUpData = LevelingSystem.levelUp(token, newLevel, newMaxGain);
+            const levelUpData = LevelingSystem.levelUp(
+              token,
+              newLevel,
+              newMaxGain,
+            );
             updates = { ...updates, ...levelUpData };
           } else {
             // Even if no level up, update stats because attack is tied to curr_gain
-            const statsUpdate = LevelingSystem.updateStatsForPrice(token, newPrice);
+            const statsUpdate = LevelingSystem.updateStatsForPrice(
+              token,
+              newPrice,
+            );
             updates = { ...updates, ...statsUpdate };
           }
 
           // Calculate damage from price drop
           if (newPrice < token.peakPrice) {
-            const damageData = DamageCalculator.applyPriceDamage(token, newPrice);
+            const damageData = DamageCalculator.applyPriceDamage(
+              token,
+              newPrice,
+            );
             updates = { ...updates, ...damageData };
           }
 
@@ -361,7 +422,7 @@ export const useGameStore = create<GameState>()(
                   isKnockedOut: newHealth <= 0,
                   lastHealthUpdate: Date.now(),
                 }
-              : t
+              : t,
           ),
         })),
 
@@ -371,7 +432,11 @@ export const useGameStore = create<GameState>()(
 
         if (!token || token.isKnockedOut) return;
 
-        const newHealth = DamageCalculator.healToken(token.health, token.maxHealth, amount);
+        const newHealth = DamageCalculator.healToken(
+          token.health,
+          token.maxHealth,
+          amount,
+        );
         get().updateTokenHealth(address, newHealth);
 
         set((state) => ({
@@ -385,11 +450,11 @@ export const useGameStore = create<GameState>()(
                       level: t.level,
                       price: t.currentPrice,
                       timestamp: Date.now(),
-                      event: 'healed' as const,
+                      event: "healed" as const,
                     },
                   ],
                 }
-              : t
+              : t,
           ),
         }));
       },
@@ -400,7 +465,10 @@ export const useGameStore = create<GameState>()(
 
         if (!token || !token.isKnockedOut) return;
 
-        const newHealth = DamageCalculator.reviveToken(token.maxHealth, percent);
+        const newHealth = DamageCalculator.reviveToken(
+          token.maxHealth,
+          percent,
+        );
 
         set((state) => ({
           inventory: state.inventory.map((t) =>
@@ -416,11 +484,11 @@ export const useGameStore = create<GameState>()(
                       level: t.level,
                       price: t.currentPrice,
                       timestamp: Date.now(),
-                      event: 'revived' as const,
+                      event: "revived" as const,
                     },
                   ],
                 }
-              : t
+              : t,
           ),
         }));
       },
@@ -434,10 +502,9 @@ export const useGameStore = create<GameState>()(
           }
 
           return {
-            badges: [
-              ...state.badges,
-              { ...badge, earnedAt: Date.now() },
-            ].sort((a, b) => a.order - b.order),
+            badges: [...state.badges, { ...badge, earnedAt: Date.now() }].sort(
+              (a, b) => a.order - b.order,
+            ),
           };
         }),
 
@@ -447,8 +514,7 @@ export const useGameStore = create<GameState>()(
         })),
 
       // New V2 actions - USDC
-      addUSDC: (amount) =>
-        set((state) => ({ usdc: state.usdc + amount })),
+      addUSDC: (amount) => set((state) => ({ usdc: state.usdc + amount })),
 
       spendUSDC: (amount) => {
         const state = get();
@@ -457,6 +523,45 @@ export const useGameStore = create<GameState>()(
           return true;
         }
         return false;
+      },
+
+      // Stats Cache actions
+      fetchAndCacheStats: async () => {
+        const state = get();
+        const walletAddress = state.walletAddress;
+
+        if (!walletAddress) {
+          console.warn("Cannot fetch stats: No wallet address");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `/api/game/stats?walletAddress=${walletAddress}`,
+          );
+          if (!response.ok) {
+            throw new Error(`Failed to fetch stats: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          set({
+            statsCache: {
+              data,
+              lastFetched: Date.now(),
+            },
+          });
+        } catch (error) {
+          console.error("Error fetching stats:", error);
+        }
+      },
+
+      clearStatsCache: () => {
+        set({
+          statsCache: {
+            data: null,
+            lastFetched: null,
+          },
+        });
       },
 
       resetGame: () =>
@@ -480,7 +585,7 @@ export const useGameStore = create<GameState>()(
         }),
     }),
     {
-      name: 'swap-em-all-storage-v2',
+      name: "swap-em-all-storage-v2",
       version: 2,
       // Custom serialization for Set
       partialize: (state) => ({
@@ -493,11 +598,11 @@ export const useGameStore = create<GameState>()(
         ...persistedState,
         cryptodex: new Set(persistedState.cryptodex || []),
       }),
-    }
-  )
+    },
+  ),
 );
 
 // Expose store to window for Phaser access
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   (window as any).gameStore = useGameStore;
 }
