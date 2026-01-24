@@ -537,7 +537,7 @@ export const useGameStore = create<GameState>()(
 
         try {
           const response = await fetch(
-            `/api/game/stats?walletAddress=${walletAddress}`,
+            `/api/game/stats?address=${walletAddress}`,
           );
           if (!response.ok) {
             throw new Error(`Failed to fetch stats: ${response.statusText}`);
