@@ -1,5 +1,5 @@
-import * as Phaser from 'phaser';
-import { NPC } from '../entities/NPC';
+import * as Phaser from "phaser";
+import { NPC } from "../entities/NPC";
 
 export interface MapData {
   width: number;
@@ -56,7 +56,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
 
   protected npcs: NPC[] = [];
   protected interactText?: Phaser.GameObjects.Text;
-  protected lastDirection: string = 'down';
+  protected lastDirection: string = "down";
 
   // Dialogue system
   protected dialogueBox?: Phaser.GameObjects.Rectangle;
@@ -104,7 +104,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
     this.createUI();
 
     // Handle scene resume
-    this.events.on('resume', this.onSceneResume, this);
+    this.events.on("resume", this.onSceneResume, this);
   }
 
   protected onSceneResume() {
@@ -134,50 +134,50 @@ export abstract class BaseMapScene extends Phaser.Scene {
 
     // Create a simple tileset texture with colored squares
     const tileSize = 16;
-    const tilesetCanvas = document.createElement('canvas');
+    const tilesetCanvas = document.createElement("canvas");
     tilesetCanvas.width = tileSize * 10; // 10 tiles wide
     tilesetCanvas.height = tileSize * 10; // 10 tiles tall
-    const ctx = tilesetCanvas.getContext('2d');
+    const ctx = tilesetCanvas.getContext("2d");
 
     if (ctx) {
       // Tile 0: Dark grass
-      ctx.fillStyle = '#0f380f';
+      ctx.fillStyle = "#0f380f";
       ctx.fillRect(0, 0, tileSize, tileSize);
 
       // Tile 1: Light grass
-      ctx.fillStyle = '#306230';
+      ctx.fillStyle = "#306230";
       ctx.fillRect(tileSize, 0, tileSize, tileSize);
 
       // Tile 2: Dirt path
-      ctx.fillStyle = '#8b7355';
+      ctx.fillStyle = "#8b7355";
       ctx.fillRect(tileSize * 2, 0, tileSize, tileSize);
 
       // Tile 3: Cobblestone
-      ctx.fillStyle = '#9bbc0f';
+      ctx.fillStyle = "#9bbc0f";
       ctx.fillRect(tileSize * 3, 0, tileSize, tileSize);
 
       // Tile 4: Wood floor
-      ctx.fillStyle = '#654321';
+      ctx.fillStyle = "#654321";
       ctx.fillRect(tileSize * 4, 0, tileSize, tileSize);
 
       // Tile 5: Water
-      ctx.fillStyle = '#1a5490';
+      ctx.fillStyle = "#1a5490";
       ctx.fillRect(tileSize * 5, 0, tileSize, tileSize);
 
       // Tile 6: Fence
-      ctx.fillStyle = '#654321';
+      ctx.fillStyle = "#654321";
       ctx.fillRect(tileSize * 6, 0, tileSize, tileSize);
 
       // Tile 7: Flowers (pink/red)
-      ctx.fillStyle = '#d84c6f';
+      ctx.fillStyle = "#d84c6f";
       ctx.fillRect(tileSize * 7, 0, tileSize, tileSize);
 
       // Tile 8: Tree (dark green)
-      ctx.fillStyle = '#0a2910';
+      ctx.fillStyle = "#0a2910";
       ctx.fillRect(tileSize * 8, 0, tileSize, tileSize);
 
       // Tile 9: Building roof (red)
-      ctx.fillStyle = '#b53120';
+      ctx.fillStyle = "#b53120";
       ctx.fillRect(tileSize * 9, 0, tileSize, tileSize);
     }
 
@@ -195,10 +195,11 @@ export abstract class BaseMapScene extends Phaser.Scene {
 
   protected createPlayer(data?: { spawnPoint?: string }) {
     const mapData = this.getMapData();
-    const spawnPoint = data?.spawnPoint || 'default';
-    const spawn = mapData.spawnPoints[spawnPoint] || mapData.spawnPoints.default;
+    const spawnPoint = data?.spawnPoint || "default";
+    const spawn =
+      mapData.spawnPoints[spawnPoint] || mapData.spawnPoints.default;
 
-    this.player = this.add.sprite(spawn.x, spawn.y, 'npcs', '1');
+    this.player = this.add.sprite(spawn.x, spawn.y, "npcs", "1");
     this.player.setScale(0.75);
     this.player.setDepth(10); // Above tiles
 
@@ -215,7 +216,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
       0,
       0,
       mapData.width * mapData.tileWidth,
-      mapData.height * mapData.tileHeight
+      mapData.height * mapData.tileHeight,
     );
   }
 
@@ -229,7 +230,9 @@ export abstract class BaseMapScene extends Phaser.Scene {
         name: npcData.name,
         dialogue: npcData.dialogue,
         gymId: npcData.gymId,
-        onInteract: npcData.onInteract ? this.getInteractCallback(npcData.onInteract) : undefined,
+        onInteract: npcData.onInteract
+          ? this.getInteractCallback(npcData.onInteract)
+          : undefined,
       });
       this.npcs.push(npc);
     }
@@ -238,17 +241,19 @@ export abstract class BaseMapScene extends Phaser.Scene {
   protected getInteractCallback(type: string): () => void {
     return () => {
       switch (type) {
-        case 'store':
+        case "store":
           this.scene.pause();
-          this.scene.launch('StoreScene');
+          this.scene.launch("StoreScene", { callingScene: this.scene.key });
           break;
-        case 'healing':
+        case "healing":
           this.scene.pause();
-          this.scene.launch('HealingCenterScene');
+          this.scene.launch("HealingCenterScene", {
+            callingScene: this.scene.key,
+          });
           break;
-        case 'trader':
+        case "trader":
           this.scene.pause();
-          this.scene.launch('TraderScene');
+          this.scene.launch("TraderScene", { callingScene: this.scene.key });
           break;
       }
     };
@@ -266,7 +271,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
         transition.x + transition.width / 2,
         transition.y + transition.height / 2,
         transition.width,
-        transition.height
+        transition.height,
       );
       this.physics.add.existing(zone);
 
@@ -282,82 +287,91 @@ export abstract class BaseMapScene extends Phaser.Scene {
 
   protected setupInput() {
     this.cursors = this.input.keyboard?.createCursorKeys();
-    this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.spaceKey = this.input.keyboard?.addKey(
+      Phaser.Input.Keyboard.KeyCodes.SPACE,
+    );
 
     // Menu shortcuts
-    this.input.keyboard?.on('keydown-C', () => {
+    this.input.keyboard?.on("keydown-C", () => {
       this.scene.pause();
-      this.scene.launch('CryptodexScene', { callingScene: this.scene.key });
+      this.scene.launch("CryptodexScene", { callingScene: this.scene.key });
     });
 
-    this.input.keyboard?.on('keydown-B', () => {
+    this.input.keyboard?.on("keydown-B", () => {
       this.scene.pause();
-      this.scene.launch('BagScene', { callingScene: this.scene.key });
+      this.scene.launch("BagScene", { callingScene: this.scene.key });
     });
 
     // Debug: Force encounter
-    this.input.keyboard?.on('keydown-E', () => {
+    this.input.keyboard?.on("keydown-E", () => {
       this.triggerEncounter();
     });
   }
 
   protected createUI() {
     // Instructions
-    this.add.text(4, 4, 'Arrows: Move | E: Encounter | SPACE: Interact', {
-      fontFamily: 'monospace',
-      fontSize: '9px',
-      color: '#9bbc0f',
-      backgroundColor: '#000000',
-      padding: { x: 4, y: 3 },
-    }).setScrollFactor(0).setDepth(100);
+    this.add
+      .text(4, 4, "Arrows: Move | E: Encounter | SPACE: Interact", {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#9bbc0f",
+        backgroundColor: "#000000",
+        padding: { x: 4, y: 3 },
+      })
+      .setScrollFactor(0)
+      .setDepth(100);
 
     // Interact prompt
-    this.interactText = this.add.text(
-      this.cameras.main.centerX,
-      this.cameras.main.height - 20,
-      '',
-      {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9bbc0f',
-        backgroundColor: '#000000',
+    this.interactText = this.add
+      .text(this.cameras.main.centerX, this.cameras.main.height - 20, "", {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#9bbc0f",
+        backgroundColor: "#000000",
         padding: { x: 6, y: 3 },
-      }
-    ).setOrigin(0.5).setScrollFactor(0).setVisible(false).setDepth(100);
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setVisible(false)
+      .setDepth(100);
 
     // Dialogue box
-    this.dialogueBox = this.add.rectangle(
-      0,
-      this.cameras.main.height - 50,
-      this.cameras.main.width,
-      50,
-      0x000000,
-      0.85
-    ).setOrigin(0).setScrollFactor(0).setVisible(false).setDepth(100);
+    this.dialogueBox = this.add
+      .rectangle(
+        0,
+        this.cameras.main.height - 50,
+        this.cameras.main.width,
+        50,
+        0x000000,
+        0.85,
+      )
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setVisible(false)
+      .setDepth(100);
 
-    this.dialogueText = this.add.text(
-      8,
-      this.cameras.main.height - 45,
-      '',
-      {
-        fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#9bbc0f',
+    this.dialogueText = this.add
+      .text(8, this.cameras.main.height - 45, "", {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#9bbc0f",
         lineSpacing: 2,
-        wordWrap: { width: this.cameras.main.width - 20 }
-      }
-    ).setScrollFactor(0).setVisible(false).setDepth(101);
+        wordWrap: { width: this.cameras.main.width - 20 },
+      })
+      .setScrollFactor(0)
+      .setVisible(false)
+      .setDepth(101);
 
-    this.dialogueArrow = this.add.text(
-      this.cameras.main.width - 12,
-      this.cameras.main.height - 10,
-      '▼',
-      {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9bbc0f',
-      }
-    ).setOrigin(0.5).setScrollFactor(0).setVisible(false).setDepth(101);
+    this.dialogueArrow = this.add
+      .text(this.cameras.main.width - 12, this.cameras.main.height - 10, "▼", {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#9bbc0f",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setVisible(false)
+      .setDepth(101);
   }
 
   update() {
@@ -373,7 +387,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
     }
 
     // Handle DOWN for dialogue
-    if (this.isShowingDialogue && Phaser.Input.Keyboard.JustDown(this.cursors.down)) {
+    if (
+      this.isShowingDialogue &&
+      Phaser.Input.Keyboard.JustDown(this.cursors.down)
+    ) {
       this.advanceDialogue();
     }
 
@@ -392,21 +409,21 @@ export abstract class BaseMapScene extends Phaser.Scene {
     if (this.cursors.left.isDown) {
       vx = -this.moveSpeed;
       moving = true;
-      direction = 'left';
+      direction = "left";
     } else if (this.cursors.right.isDown) {
       vx = this.moveSpeed;
       moving = true;
-      direction = 'right';
+      direction = "right";
     }
 
     if (this.cursors.up.isDown) {
       vy = -this.moveSpeed;
       moving = true;
-      direction = 'up';
+      direction = "up";
     } else if (this.cursors.down.isDown) {
       vy = this.moveSpeed;
       moving = true;
-      direction = 'down';
+      direction = "down";
     }
 
     // Check collision before moving
@@ -419,10 +436,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
       const tileY = Math.floor(nextY / 16);
 
       // Check if tile is blocked
-      if (
-        this.collisionData[tileY] &&
-        this.collisionData[tileY][tileX] === 1
-      ) {
+      if (this.collisionData[tileY] && this.collisionData[tileY][tileX] === 1) {
         moving = false;
         vx = 0;
         vy = 0;
@@ -515,7 +529,9 @@ export abstract class BaseMapScene extends Phaser.Scene {
     this.currentDialogueIndex++;
 
     if (this.currentDialogueIndex < this.currentDialogue.length) {
-      this.dialogueText?.setText(this.currentDialogue[this.currentDialogueIndex]);
+      this.dialogueText?.setText(
+        this.currentDialogue[this.currentDialogueIndex],
+      );
     } else {
       this.hideDialogue();
       if (this.dialogueCallback) {
@@ -544,11 +560,16 @@ export abstract class BaseMapScene extends Phaser.Scene {
 
   protected getIdleFrame(direction: string): string {
     switch (direction) {
-      case 'down': return '1';
-      case 'up': return '4';
-      case 'left': return '7';
-      case 'right': return '10';
-      default: return '1';
+      case "down":
+        return "1";
+      case "up":
+        return "4";
+      case "left":
+        return "7";
+      case "right":
+        return "10";
+      default:
+        return "1";
     }
   }
 
@@ -556,13 +577,13 @@ export abstract class BaseMapScene extends Phaser.Scene {
     this.cameras.main.flash(200, 255, 255, 255);
     this.time.delayedCall(200, () => {
       this.scene.pause();
-      this.scene.launch('EncounterScene', { callingScene: this.scene.key });
+      this.scene.launch("EncounterScene", { callingScene: this.scene.key });
     });
   }
 
   shutdown() {
     // Clean up event listeners
-    this.events.off('resume', this.onSceneResume, this);
+    this.events.off("resume", this.onSceneResume, this);
 
     // Clean up NPCs
     for (const npc of this.npcs) {
