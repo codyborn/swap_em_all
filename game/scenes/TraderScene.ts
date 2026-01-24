@@ -311,7 +311,7 @@ export class TraderScene extends Phaser.Scene {
         `${this.inventory.length === this.selectedOption ? ">" : " "} Exit Trader`,
       );
       this.menuText?.setText(options.join("\n"));
-    } else if (this.currentState === "confirm") {
+    } else if (this.currentState === "confirm" && this.tokenToSell) {
       // Show confirmation dialog with total value
       const amountBigInt = BigInt(this.tokenToSell.amountCaptured);
       const divisor = BigInt(10 ** this.tokenToSell.decimals);
@@ -388,6 +388,11 @@ export class TraderScene extends Phaser.Scene {
   }
 
   private async executeSell() {
+    if (!this.tokenToSell) {
+      console.error("[TraderScene] No token selected");
+      return;
+    }
+
     const swapBridge = (window as any).swapBridge;
     const gameStore = (window as any).gameStore;
 
