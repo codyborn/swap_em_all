@@ -265,22 +265,12 @@ export class EncounterScene extends Phaser.Scene {
           });
 
           // Register capture in database
-          if (result.txHash && walletAddress && result.amountOut) {
+          if (result.txHash && walletAddress) {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
 
-            // Convert amountOut from human-readable to base units
-            // result.amountOut is in human-readable format (e.g., "1.5")
-            // We need to convert it to base units (e.g., "1500000000000000000")
-            const amountFloat = parseFloat(result.amountOut);
-            const amountInBaseUnits = BigInt(
-              Math.floor(amountFloat * Math.pow(10, tokenInfo.decimals)),
-            );
-            const expectedAmount = amountInBaseUnits.toString();
-
             console.log("[EncounterScene] Registering capture:", {
-              amountOut: result.amountOut,
-              decimals: tokenInfo.decimals,
-              expectedAmount,
+              txHash: result.txHash,
+              tokenAddress,
             });
 
             fetch(`${apiUrl}/api/game/capture`, {
@@ -290,7 +280,6 @@ export class EncounterScene extends Phaser.Scene {
                 txHash: result.txHash,
                 walletAddress,
                 tokenAddress,
-                expectedAmount,
                 usdcSpent: (parseFloat(usdcAmount) * 1_000_000).toString(), // Convert to USDC decimals
               }),
             })
