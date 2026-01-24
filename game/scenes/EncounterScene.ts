@@ -264,6 +264,9 @@ export class EncounterScene extends Phaser.Scene {
             moves: [],
           });
 
+          // Clear stats cache so next load will fetch fresh data with the new token
+          gameStore.getState().clearStatsCache();
+
           // Register capture in database
           if (result.txHash && walletAddress) {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
