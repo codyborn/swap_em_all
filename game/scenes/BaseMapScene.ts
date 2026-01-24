@@ -50,7 +50,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
   protected player?: Phaser.GameObjects.Sprite;
   protected cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   protected spaceKey?: Phaser.Input.Keyboard.Key;
-  protected moveSpeed = 1;
+  protected moveSpeed = 2;
   protected stepCounter = 0;
   protected encounterChance = 0.1;
 
