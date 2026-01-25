@@ -65,14 +65,14 @@ export function GameBoyShell({ children }: GameBoyShellProps) {
         </div>
 
         {/* Speaker */}
-        <div className="absolute top-4 right-8 grid grid-cols-2 gap-1">
+        <div className="absolute top-4 right-2 grid grid-cols-2 gap-1">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="w-2 h-2 bg-gray-400 rounded-full"></div>
           ))}
         </div>
 
         {/* Power LED */}
-        <div className="absolute top-6 left-8 flex items-center gap-2">
+        <div className="absolute top-2 left-8 flex items-center gap-2">
           <div className="w-2 h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50"></div>
           <span className="text-xs font-sans text-gray-600">POWER</span>
         </div>
